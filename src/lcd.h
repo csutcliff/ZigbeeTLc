@@ -61,12 +61,19 @@ void show_temp_symbol(u8 symbol);
 
 #define EPD_REFRESH_CNT_MAX		4096
 
+/* Set non-zero over ZCL to force a refresh at the next opportunity. Cleared by
+ * the driver once it has run. Deliberately not part of zcl_thermostatUICfgAttr_t:
+ * that whole struct is compared and written to flash when any of it changes, and
+ * a transient trigger has no business causing a flash write. */
+extern u8 epd_refresh_now;
+
 typedef struct  {
 	u8 display_off; // !g_zcl_thermostatUICfgAttrs.display_off
 	u8 init;
 	u8 stage;
 	u8 updated;
-	u16 refresh_cnt;
+	u16 refresh_cnt;	// counts down to the next refresh
+	u16 upd_cnt;		// display updates since the last refresh, saturating
 	u8 display_buff[LCD_BUF_SIZE];
 	u8 display_cmp_buff[LCD_BUF_SIZE];
 } scr_data_t;

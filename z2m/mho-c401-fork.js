@@ -155,6 +155,27 @@ const fork = {
         valueMax: 4096,
         valueStep: 1,
     }),
+    // Read-only. Lets you run with epd_refresh_mode "off", watch for ghosting,
+    // and read off how many updates it actually took before choosing a count.
+    epdUpdatesSinceRefresh: m.numeric({
+        name: 'epd_updates_since_refresh',
+        cluster: 'hvacUserInterfaceCfg',
+        attribute: {ID: 0x0122, type: Zcl.DataType.UINT16},
+        description:
+            'Display updates since the last refresh. Saturates at 65535. Reset by a refresh, ' +
+            'manual or automatic, and by a reboot.',
+        access: 'STATE_GET',
+    }),
+    // Write-only trigger. The firmware clears it once the refresh has run, and
+    // it is never written to flash.
+    epdRefreshNow: m.enumLookup({
+        name: 'epd_refresh_now',
+        lookup: {refresh: 1},
+        cluster: 'hvacUserInterfaceCfg',
+        attribute: {ID: 0x0123, type: Zcl.DataType.UINT8},
+        description: 'Run an anti-ghosting refresh now, whatever the mode and count are set to.',
+        access: 'SET',
+    }),
 };
 
 const definition = {
@@ -182,6 +203,8 @@ const definition = {
         base.measurementInterval,
         fork.epdRefreshMode,
         fork.epdRefreshCount,
+        fork.epdUpdatesSinceRefresh,
+        fork.epdRefreshNow,
         m.battery({voltage: true}),
     ],
     ota: true,
