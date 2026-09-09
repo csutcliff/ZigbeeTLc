@@ -65,7 +65,14 @@ GPIO_PD7 - free [B1.4], UART TX LCD [B1.6], pcb mark "P7"
 #define LCD_BUF_SIZE		6
 #define PULL_WAKEUP_SRC_PB6 PM_PIN_PULLUP_10K // LCD
 #define PULL_WAKEUP_SRC_PD7	PM_PIN_PULLUP_1M // UART TX (B1.6)
-#define LCD_INIT_DELAY()	//pm_wait_ms(50)
+/* Restored: 4ed88be commented this out, the same commit that gutted the
+ * e-paper timing. pvvx's BLE firmware waits 50 ms here before sending the B1.4
+ * init sequence, and the driver carries an upstream note that the LCD needs
+ * help coming up at low temperature. It runs once at boot, so the cost is
+ * nothing. Precautionary rather than a confirmed fix: the failure it guards
+ * against (a blank panel after a cold start, fixed by the next reset) has not
+ * been reproduced here. */
+#define LCD_INIT_DELAY()	pm_wait_ms(50)
 #define USE_DISPLAY_OFF		1
 #define USE_DISPLAY_CONNECT_SYMBOL		2 // =2 inverted
 
