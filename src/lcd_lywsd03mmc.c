@@ -451,6 +451,20 @@ void init_lcd(void){
 	 * the UART (B1.5/B1.6) and SPI (N1.6) paths below, which return early and
 	 * have no display-off handling of their own, still push an empty frame. */
 	memset(&scr.display_buff, scr.display_off ? 0 : BIT(1), sizeof(scr.display_buff));
+	/* Invalidate the compare buffer so the first update after an init always
+	 * reaches the panel. Every one of the other eight LCD drivers seeds this
+	 * with a value no real frame can match; this driver never touched it, and
+	 * pvvx's BLE original had a reinit_lcd() that did exactly this which the
+	 * Zigbee port dropped. Without it, turning the display off and back on
+	 * could leave update_lcd() believing the panel already shows the right
+	 * frame, so nothing is sent and the screen stays as the init sequence left
+	 * it until a differing reading arrives.
+	 *
+	 * Note this is the mirror image of a937fe0, not the same bug: there,
+	 * init_lcd() is part of the periodic refresh and wrongly CLEARED a buffer
+	 * it should have left alone. Here it is only ever a cold init or a
+	 * display_off toggle, and the fault is failing to invalidate. */
+	memset(&scr.display_cmp_buff, 0xff, sizeof(scr.display_cmp_buff));
 /*
 	//GPIO_PB6 set in app_config.h!
 	//gpio_setup_up_down_resistor(GPIO_PB6, PM_PIN_PULLUP_10K); // LCD on low temp needs this, its an unknown pin going to the LCD controller chip
