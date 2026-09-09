@@ -309,22 +309,27 @@ void show_big_number_x10(s16 number, u8 symbol){
 		epd_set_digit(scr.display_buff, Symbol_o, top_middle);
 	} else {
 		/* number: -995..19995 */
+		/* Take the sign BEFORE dividing. C truncates toward zero, so rounding
+		 * a negative and negating afterwards lost a whole degree: -10.0 C
+		 * displayed as -9, -15.04 C as -14, -30.0 C as -29. */
 		if (number > 1999 || number < -99) {
 			/* number: -995..-100, 2000..19995 */
-			// round(div 10)
-			number += 5;
-			number /= 10;
+			if (number < 0) {
+				number = -number;
+				scr.display_buff[14] = BIT(0); // "-"
+			}
+			number = (number + 5) / 10; // round(div 10)
 			// show no point: -99..-10, 200..1999
 			scr.display_buff[16] &= ~BIT(5); // point top
 		} else {
 			// show point: -9.9..199.9
 			scr.display_buff[16] |= BIT(5); // point top TODO: "%" + "C" + "." + "(  )" !
+			if (number < 0) {
+				number = -number;
+				scr.display_buff[14] = BIT(0); // "-"
+			}
 		}
-		/* show: -99..1999 */
-		if (number < 0) {
-			number = -number;
-			scr.display_buff[14] = BIT(0); // "-"
-		}
+		/* show: 0..1999 */
 		/* number: -99..1999 */
 		if (number > 999) scr.display_buff[12] |= BIT(3); // "1" 1000..1999
 		if (number > 99) epd_set_digit(scr.display_buff, number / 100 % 10, top_left);
