@@ -22,6 +22,9 @@ measured_battery_t measured_battery;
 
 #define BAT_AVERAGE_COUNT_SHL	9 // 4,5,6,7,8,9,10,11,12 -> 16,32,64,128,256,512,1024,2048,4096
 
+u8 ota_in_progress;			// set by sensorDevice_otaProcessMsgHandler()
+static u8 battery_low_cnt;	// consecutive readings below the threshold
+
 _BAT_SPEED_CODE_SEC_
 __attribute__((optimize("-Os")))
 void battery_detect(bool startup_flg)
@@ -31,21 +34,42 @@ void battery_detect(bool startup_flg)
 		battery_level = BATTERY_SAFETY_THRESHOLD;
 	adc_channel_init(SHL_ADC_VBAT);
 	measured_battery.mv = get_adc_mv(0);
-	if(measured_battery.mv < battery_level){
+
+	u8 low = (measured_battery.mv < battery_level);
+
+	/* An OTA transfer hammers the cell continuously, so anything measured
+	 * during one is the transfer's voltage drop rather than the state of the
+	 * battery. Acting on it dropped the device into a 180 second deep sleep
+	 * part way through the download, which aborted the update. */
+	if(low && ota_in_progress) {
+		low = 0;
+		battery_low_cnt = 0;
+	}
+
+	if(low) {
+		/* Require several consecutive low readings before believing it. The
+		 * startup check keeps its single-shot behaviour: there is no radio
+		 * traffic yet, so that reading is a fair one, and refusing to run on a
+		 * genuinely flat cell is the point of it. */
+		if(startup_flg || ++battery_low_cnt >= BATTERY_LOW_CONFIRM_CNT) {
+			battery_low_cnt = 0;
 #if PM_ENABLE
 #if USE_DISPLAY
-		display_off();
+			display_off();
 #endif
 #if USE_SENSOR_TH
-		sensor_go_sleep();
+			sensor_go_sleep();
 #endif
 #if USE_SENSOR_XBR818
-		xbr818_go_sleep();
+			xbr818_go_sleep();
 #endif
-		drv_pm_longSleep(PM_SLEEP_MODE_DEEPSLEEP, PM_WAKEUP_SRC_TIMER, LOW_POWER_SLEEP_TIME_ms);
+			drv_pm_longSleep(PM_SLEEP_MODE_DEEPSLEEP, PM_WAKEUP_SRC_TIMER, LOW_POWER_SLEEP_TIME_ms);
 #else
-		SYSTEM_RESET();
+			SYSTEM_RESET();
 #endif
+		}
+	} else {
+		battery_low_cnt = 0;
 	}
 	measured_battery.summ += measured_battery.mv;
 	measured_battery.cnt++;

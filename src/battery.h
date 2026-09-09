@@ -12,6 +12,16 @@
 #define BATTERY_SAFETY_THRESHOLD	2200 //2.2v
 #define LOW_POWER_SLEEP_TIME_ms		180*1000 // 180 sec
 
+/* Consecutive readings below the threshold before the cell is believed flat.
+ * A CR2032 sags well under its resting voltage during an 8 mA transmit burst,
+ * and one unlucky sample used to be enough to trigger the 180 second deep
+ * sleep, which killed whatever the device was doing. */
+#define BATTERY_LOW_CONFIRM_CNT		3
+
+/* Set while a Zigbee OTA is running, from sensorDevice_otaProcessMsgHandler().
+ * Battery readings taken then are measuring the transfer, not the cell. */
+extern u8 ota_in_progress;
+
 // measured_battery.flag:
 #define FLG_MEASURE_BAT_ADV		0x01
 #define FLG_MEASURE_BAT_CC		0x02
