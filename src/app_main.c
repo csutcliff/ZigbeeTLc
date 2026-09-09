@@ -229,6 +229,20 @@ u8 is_comfort(s16 t, u16 h) {
 #endif
 
 #if	USE_DISPLAY
+
+/* Threshold for the on-screen low-battery symbol, in whole percent.
+ * g_zcl_powerAttrs.batteryPercentage follows the ZCL BatteryPercentageRemaining
+ * convention, so it is 0..200 in half-percent steps when ZIGBEE_BATT_LEVEL is
+ * set (see battery.c and lcd.h). Comparing it against a bare 25 therefore meant
+ * 12.5%, which on the linear 2200..3000 mV curve in battery.c is below 2.30 V:
+ * far too late to warn anyone running a CR2032. */
+#define DISPLAY_BATTERY_LOW_PCT		25
+#if ZIGBEE_BATT_LEVEL
+#define DISPLAY_BATTERY_LOW_LEVEL	(DISPLAY_BATTERY_LOW_PCT * 2)
+#else
+#define DISPLAY_BATTERY_LOW_LEVEL	DISPLAY_BATTERY_LOW_PCT
+#endif
+
 void show_th(void) {
 #ifdef ZCL_THERMOSTAT_UI_CFG
     		if (g_zcl_thermostatUICfgAttrs.TemperatureDisplayMode) {
@@ -249,7 +263,7 @@ void show_th(void) {
 #ifdef USE_DISPLAY_BATTERY_LEVEL
     		show_battery_symbol(true, g_zcl_powerAttrs.batteryPercentage);
 #else
-    		show_battery_symbol(g_zcl_powerAttrs.batteryPercentage < 25);
+    		show_battery_symbol(g_zcl_powerAttrs.batteryPercentage < DISPLAY_BATTERY_LOW_LEVEL);
 #endif
 #if SHOW_SMILEY
 #ifdef ZCL_THERMOSTAT_UI_CFG
