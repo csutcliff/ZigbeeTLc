@@ -186,6 +186,17 @@ void adc_channel_init(ADC_InputPchTypeDef p_ain) {
 
 u32 adc_average;
 
+/* The dual-mode (USE_BLE) build is already at its retention limit upstream, and
+ * get_adc_mv() is _attribute_ram_code_sec_, so bounding the sample wait there
+ * overflows the link. The Zigbee-only build has room. */
+#if USE_BLE
+#define ADC_BOUND_SAMPLE_WAIT	0
+#else
+#define ADC_BOUND_SAMPLE_WAIT	1
+#define ADC_SAMPLE_GUARD	200000
+static u16 adc_last_mv;	// returned if a conversion stalls
+#endif
+
 _attribute_ram_code_sec_
 u16 get_adc_mv(int flg) { // ADC_InputPchTypeDef
 	volatile unsigned int adc_dat_buf[ADC_BUF_COUNT];
@@ -193,6 +204,7 @@ u16 get_adc_mv(int flg) { // ADC_InputPchTypeDef
 	u16 temp;
 	u16 rp = 0;
 	int i, j;
+	int adc_stalled = 0;
 	adc_power_on_sar_adc(1); // + 0.4 mA
 	adc_reset_adc_module();
 	for (i = 0; i < ADC_BUF_COUNT; i++) {
@@ -201,7 +213,25 @@ u16 get_adc_mv(int flg) { // ADC_InputPchTypeDef
 	adc_config_misc_channel_buf((u16 *) adc_dat_buf, sizeof(adc_dat_buf));
 	dfifo_enable_dfifo2();
 	for (i = 0; i < ADC_BUF_COUNT; i++) {
+#if ADC_BOUND_SAMPLE_WAIT
+		/* Bound the wait: this spins forever if the dfifo never produces a
+		 * sample, with the SAR block left powered on drawing an extra 0.4 mA
+		 * and no watchdog to recover it. A spin count rather than clock_time()
+		 * because this function is _attribute_ram_code_sec_ and every byte
+		 * here comes out of the retention budget. The exact bound does not
+		 * matter, only that it terminates. */
+		u32 guard = ADC_SAMPLE_GUARD;
+		while (rp == reg_dfifo2_wptr) {
+			if (--guard == 0) {
+				adc_stalled = 1;
+				break;
+			}
+		}
+		if (adc_stalled)
+			break;
+#else
 		while(rp == reg_dfifo2_wptr);
+#endif
 		rp = reg_dfifo2_wptr; // 0,4,8,c,10,14,18,1c
 		if (adc_dat_buf[i] & BIT(13)) {
 			/* 14 bit resolution, BIT(13) is sign bit,
@@ -223,15 +253,34 @@ u16 get_adc_mv(int flg) { // ADC_InputPchTypeDef
 	}
 	dfifo_disable_dfifo2();
 	adc_power_on_sar_adc(0); // - 0.4 mA
+#if ADC_BOUND_SAMPLE_WAIT
+	if (adc_stalled) {
+		/* Powering the SAR block down above is the important part. Return the
+		 * previous result rather than a partly filled buffer, so a stalled
+		 * conversion cannot look like a flat cell to battery_detect() and
+		 * trigger its long deep sleep. */
+		return adc_last_mv;
+	}
+#endif
 	adc_average = adc_sample[2] + adc_sample[3] + adc_sample[4]
 			+ adc_sample[5];
 	if(flg)
 		return adc_average;
 #if USE_READ_ADC_CALIBRATION
 	adc_average >>= 2;
-	return ((adc_average + adc_vref_cfg.offset) * adc_vref_cfg.vref) >> 10; // adc_vref default: 1175 (mV)
+#if ADC_BOUND_SAMPLE_WAIT
+	adc_last_mv = ((adc_average + adc_vref_cfg.offset) * adc_vref_cfg.vref) >> 10;
+	return adc_last_mv;
+#else
+	return ((adc_average + adc_vref_cfg.offset) * adc_vref_cfg.vref) >> 10;
+#endif // adc_vref default: 1175 (mV)
+#else
+#if ADC_BOUND_SAMPLE_WAIT
+	adc_last_mv = ((adc_average) * ADC_BAT_VREF_MV) >> 12;
+	return adc_last_mv;
 #else
 	return ((adc_average) * ADC_BAT_VREF_MV) >> 12;
+#endif
 #endif
 }
 

@@ -3,6 +3,27 @@
 //#include "app_cfg.h"
 #include "i2c_drv.h"
 
+/* Bound every I2C busy-wait.
+ *
+ * These loops are entered with interrupts disabled, so a slave holding SDA or
+ * SCL low (the classic wedged-sensor case) used to hang the MCU here forever
+ * with no watchdog to recover it: the device stops reporting and drains the
+ * cell at milliamps until someone pulls the battery.
+ *
+ * The bound is deliberately generous. A byte at the slowest configured rate,
+ * 100 kHz, is about 90 us, so a whole transaction is well under a millisecond;
+ * 10 ms means this can only ever fire on a genuinely stuck bus. Callers already
+ * cope with a failed transfer, and read_sensor() re-runs check_sensor() after
+ * one, so a transient wedge self-heals on the next cycle. */
+#define I2C_BUSY_TIMEOUT_US	10000
+#define I2C_WAIT_BUSY() do { \
+		u32 _t0 = clock_time(); \
+		while ((reg_i2c_status & FLD_I2C_CMD_BUSY) \
+		   && (u32)(clock_time() - _t0) < I2C_BUSY_TIMEOUT_US * CLOCK_16M_SYS_TIMER_CLK_1US) \
+			; \
+	} while (0)
+
+
 #if USE_I2C_DRV == I2C_DRV_HARD // Hardware I2C
 
 #ifndef I2C_GROUP
@@ -29,7 +50,7 @@ unsigned char scan_i2c_addr(unsigned char address){
 	reg_i2c_speed = (u8)(CLOCK_SYS_CLOCK_HZ/(4*100000)); // 100 kHz
 	reg_i2c_id = (unsigned char) address;
 	reg_i2c_ctrl = FLD_I2C_CMD_START | FLD_I2C_CMD_ID | FLD_I2C_CMD_STOP;
-	while (reg_i2c_status & FLD_I2C_CMD_BUSY);
+	I2C_WAIT_BUSY();
 	reg_i2c_speed = s;
 	irq_restore(r);
 	return ((reg_i2c_status & FLD_I2C_NAK)? 0 : address);
@@ -43,7 +64,7 @@ int send_i2c_byte(unsigned char i2c_addr, unsigned char cmd) {
 	reg_i2c_id = i2c_addr;
 	reg_i2c_adr = cmd;
 	reg_i2c_ctrl = FLD_I2C_CMD_START | FLD_I2C_CMD_ID | FLD_I2C_CMD_ADDR | FLD_I2C_CMD_STOP;
-	while (reg_i2c_status & FLD_I2C_CMD_BUSY);
+	I2C_WAIT_BUSY();
 	irq_restore(r);
 	return (reg_i2c_status & FLD_I2C_NAK);
 }
@@ -56,7 +77,7 @@ int send_i2c_word(unsigned char i2c_addr, unsigned short w) {
 	reg_i2c_id = i2c_addr;
 	reg_i2c_adr_dat = w;
 	reg_i2c_ctrl = FLD_I2C_CMD_START | FLD_I2C_CMD_ID | FLD_I2C_CMD_DO | FLD_I2C_CMD_ADDR | FLD_I2C_CMD_STOP;
-	while (reg_i2c_status & FLD_I2C_CMD_BUSY);
+	I2C_WAIT_BUSY();
 	irq_restore(r);
 	return (reg_i2c_status & FLD_I2C_NAK);
 }
@@ -71,20 +92,20 @@ int send_i2c_bytes(unsigned char i2c_addr, unsigned char * dataBuf, size_t dataL
 			init_i2c();
 	reg_i2c_id = i2c_addr;
 	reg_i2c_ctrl = FLD_I2C_CMD_START | FLD_I2C_CMD_ID;
-	while (reg_i2c_status & FLD_I2C_CMD_BUSY);
+	I2C_WAIT_BUSY();
 	err = reg_i2c_status & FLD_I2C_NAK;
 	if(!err) {
 		while (size--) {
 			reg_i2c_do = *p++;
 			reg_i2c_ctrl = FLD_I2C_CMD_DO;
-			while (reg_i2c_status & FLD_I2C_CMD_BUSY);
+			I2C_WAIT_BUSY();
 			err = reg_i2c_status & FLD_I2C_NAK;
 			if(err)
 				break;
 		}
 	}
 	reg_i2c_ctrl = FLD_I2C_CMD_STOP;
-	while (reg_i2c_status & FLD_I2C_CMD_BUSY);
+	I2C_WAIT_BUSY();
 	irq_restore(r);
 	return err;
 }
@@ -97,14 +118,14 @@ int read_i2c_byte(unsigned char i2c_addr) {
 			init_i2c();
 	reg_i2c_id = i2c_addr | FLD_I2C_WRITE_READ_BIT;
 	reg_i2c_ctrl = FLD_I2C_CMD_START | FLD_I2C_CMD_ID | FLD_I2C_CMD_READ_ID;
-    while(reg_i2c_status & FLD_I2C_CMD_BUSY);
+    I2C_WAIT_BUSY();
 	if((reg_i2c_status & FLD_I2C_NAK) == 0) {
 		reg_i2c_ctrl = FLD_I2C_CMD_DI | FLD_I2C_CMD_READ_ID | FLD_I2C_CMD_ACK | FLD_I2C_CMD_STOP;
-		while(reg_i2c_status & FLD_I2C_CMD_BUSY);
+		I2C_WAIT_BUSY();
 		ret = reg_i2c_di;
 	} else {
 		reg_i2c_ctrl = FLD_I2C_CMD_STOP;
-		while(reg_i2c_status & FLD_I2C_CMD_BUSY);
+		I2C_WAIT_BUSY();
 		ret = -1;
 	}
     irq_restore(r);
@@ -121,7 +142,7 @@ int read_i2c_bytes(unsigned char i2c_addr, unsigned char * dataBuf, int dataLen)
 			init_i2c();
 	reg_i2c_id = i2c_addr | FLD_I2C_WRITE_READ_BIT;
 	reg_i2c_ctrl = FLD_I2C_CMD_START | FLD_I2C_CMD_ID | FLD_I2C_CMD_READ_ID;
-    while(reg_i2c_status & FLD_I2C_CMD_BUSY);
+    I2C_WAIT_BUSY();
 	ret = reg_i2c_status & FLD_I2C_NAK;
 	if(ret == 0) {
 		while(size) {
@@ -130,12 +151,12 @@ int read_i2c_bytes(unsigned char i2c_addr, unsigned char * dataBuf, int dataLen)
 				reg_i2c_ctrl = FLD_I2C_CMD_DI | FLD_I2C_CMD_READ_ID | FLD_I2C_CMD_ACK;
 			else
 				reg_i2c_ctrl = FLD_I2C_CMD_DI | FLD_I2C_CMD_READ_ID;
-			while(reg_i2c_status & FLD_I2C_CMD_BUSY);
+			I2C_WAIT_BUSY();
 			*p++ = reg_i2c_di;
 		}
 	}
 	reg_i2c_ctrl = FLD_I2C_CMD_STOP;
-    while(reg_i2c_status & FLD_I2C_CMD_BUSY);
+    I2C_WAIT_BUSY();
     irq_restore(r);
     return ret;
 }
@@ -151,7 +172,7 @@ int read_i2c_addr_bytes(unsigned char i2c_addr, unsigned char reg_addr, unsigned
 	reg_i2c_id = i2c_addr;
 	reg_i2c_adr = reg_addr;
 	reg_i2c_ctrl = FLD_I2C_CMD_START | FLD_I2C_CMD_ID | FLD_I2C_CMD_ADDR;
-	while (reg_i2c_status & FLD_I2C_CMD_BUSY);
+	I2C_WAIT_BUSY();
 	ret = reg_i2c_status & FLD_I2C_NAK;
 	if (ret == 0 && size) {
 		// Start By Master Read, Write Slave Address, Read data first byte
@@ -159,7 +180,7 @@ int read_i2c_addr_bytes(unsigned char i2c_addr, unsigned char reg_addr, unsigned
 		reg_rst0 = 0;
 		reg_i2c_id = i2c_addr | FLD_I2C_WRITE_READ_BIT;
 		reg_i2c_ctrl = FLD_I2C_CMD_START | FLD_I2C_CMD_ID; // | FLD_I2C_CMD_READ_ID;
-	    while(reg_i2c_status & FLD_I2C_CMD_BUSY);
+	    I2C_WAIT_BUSY();
 		ret = reg_i2c_status & FLD_I2C_NAK;
 		if(ret == 0) {
 			while(size--) {
@@ -167,13 +188,13 @@ int read_i2c_addr_bytes(unsigned char i2c_addr, unsigned char reg_addr, unsigned
 					reg_i2c_ctrl = FLD_I2C_CMD_DI | FLD_I2C_CMD_READ_ID | FLD_I2C_CMD_ACK;
 				else
 					reg_i2c_ctrl = FLD_I2C_CMD_DI | FLD_I2C_CMD_READ_ID;
-				while(reg_i2c_status & FLD_I2C_CMD_BUSY);
+				I2C_WAIT_BUSY();
 				*p++ = reg_i2c_di;
 			}
 		}
 	}
 	reg_i2c_ctrl = FLD_I2C_CMD_STOP;
-    while(reg_i2c_status & FLD_I2C_CMD_BUSY);
+    I2C_WAIT_BUSY();
     irq_restore(r);
     return ret;
 }
@@ -194,14 +215,14 @@ int I2CBusUtr(void * outdata, i2c_utr_t * tr, u32 wrlen) {
 
 	reg_i2c_id = *pwrdata++; // or (wrlen == 0 && rdlen)
 	reg_i2c_ctrl = FLD_I2C_CMD_START | FLD_I2C_CMD_ID;
-	while(reg_i2c_status & FLD_I2C_CMD_BUSY);
+	I2C_WAIT_BUSY();
 
 	int ret = reg_i2c_status & FLD_I2C_NAK;
 	while(ret == 0 && wrlen) {
 		// write data
 		reg_i2c_do = *pwrdata++;
 		reg_i2c_ctrl = FLD_I2C_CMD_DO;
-		while(reg_i2c_status & FLD_I2C_CMD_BUSY);
+		I2C_WAIT_BUSY();
 		ret = reg_i2c_status & FLD_I2C_NAK;
 
 		if(--wrlen == cntstart && ret == 0) { // + send start & id
@@ -212,11 +233,11 @@ int I2CBusUtr(void * outdata, i2c_utr_t * tr, u32 wrlen) {
 				reg_rst0 = FLD_RST0_I2C;
 				reg_rst0 = 0;
 			}
-			while(reg_i2c_status & FLD_I2C_CMD_BUSY);
+			I2C_WAIT_BUSY();
 			reg_i2c_id = tr->wrdata[0] |  FLD_I2C_WRITE_READ_BIT;
 			// start + id
 			reg_i2c_ctrl = FLD_I2C_CMD_START | FLD_I2C_CMD_ID;
-			while(reg_i2c_status & FLD_I2C_CMD_BUSY);
+			I2C_WAIT_BUSY();
 			ret = reg_i2c_status & FLD_I2C_NAK;
 		}
 	}
@@ -226,12 +247,12 @@ int I2CBusUtr(void * outdata, i2c_utr_t * tr, u32 wrlen) {
 				reg_i2c_ctrl = FLD_I2C_CMD_DI | FLD_I2C_CMD_READ_ID | FLD_I2C_CMD_ACK;
 			else
 				reg_i2c_ctrl = FLD_I2C_CMD_DI | FLD_I2C_CMD_READ_ID;
-			while(reg_i2c_status & FLD_I2C_CMD_BUSY);
+			I2C_WAIT_BUSY();
 			*poutdata++ = reg_i2c_di;
 		}
 	}
 	reg_i2c_ctrl = FLD_I2C_CMD_STOP; // launch start/stop cycle
-	while(reg_i2c_status & FLD_I2C_CMD_BUSY);
+	I2C_WAIT_BUSY();
 	irq_restore(r);
 	return ret;
 }
