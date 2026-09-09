@@ -137,12 +137,17 @@
 		#define CHIP_TYPE		TLSR_B91
 #endif
 
+/* Fork versioning: upstream's version with the build incremented, so OTA sees
+ * this as newer than the release it is based on. FILE_VERSION, which is what
+ * OTA compares, is built from these. The fork is identified by swBuildId (see
+ * ZCL_BASIC_SW_BUILD_ID in app_cfg.h), not by these numbers.
+ * Base: upstream v0.1.4.0 / v0.0.1.8. */
 #if USE_BLE
 #define APP_RELEASE				0x00	//BCD app release "0.0"
-#define APP_BUILD				0x18	//BCD app build "0.4"
+#define APP_BUILD				0x19	//BCD app build "1.9"
 #else
 #define APP_RELEASE				0x01	//BCD app release "0.1"
-#define APP_BUILD				0x40	//BCD app build "3.9"
+#define APP_BUILD				0x41	//BCD app build "4.1"
 #endif
 #define STACK_RELEASE			0x30	//BCD stack release 3.0
 #define STACK_BUILD				0x01	//BCD stack build 01
