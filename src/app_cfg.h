@@ -263,6 +263,21 @@
  */
 // ID compatible NV: (0x3D000000 | (APP_RELEASE<<16) | (APP_BUILD<<8) | DEVICE)
 // Used NV_MODULE_APP Flash: 0x7a000 - 0x7c000
+/* Fork marker, reported as ZCL Basic swBuildId (0x4000).
+ *
+ * This is how Zigbee2MQTT tells this firmware apart from pvvx's: a definition
+ * with a fingerprint on softwareBuildID beats a plain zigbeeModel match, so the
+ * external converter in z2m/ exposes the extra controls only on our build, and
+ * a device running upstream firmware still falls through to the built-in
+ * definition.
+ *
+ * Keep it a fixed string. Z2M compares softwareBuildID exactly, so folding the
+ * stack and app version in here (as upstream does) would break the fingerprint
+ * on every version bump. Version information is still available from the
+ * appVersion attribute and dateCode. Bump the number only when a change needs
+ * Z2M to treat the build as different. */
+#define ZCL_BASIC_SW_BUILD_ID	{13,'c','4','0','1','f','o','r','k','-','0','0','0','1'}
+
 // Bump this whenever zcl_thermostatUICfgAttr_t (or any other saved struct)
 // changes layout: init_nv_app() compares it against the stored value and wipes
 // NV_MODULE_APP on a mismatch, so a stale item is never read into a struct of
