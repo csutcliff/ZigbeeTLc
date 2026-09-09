@@ -24,6 +24,10 @@
 
 sensor_th_t sensor_ht;
 
+/* Consecutive failed reads before the reported values are marked invalid. */
+#define SENSOR_FAIL_CONFIRM_CNT	3
+static u8 sensor_fail_cnt;
+
 #define _TH_SPEED_CODE_SEC_ _attribute_ram_code_sec_ // for speed
 
 #if USE_SENSOR_SHT30 || USE_SENSOR_SHT4X || USE_SENSOR_SHTC3
@@ -375,6 +379,7 @@ inline void sensor_calk_and_offset(sensor_th_t *p, s32 t, u32 h) {
 		p->humi = 9999;
 	g_zcl_relHumidityAttrs.measuredValue = p->humi;
 	p->flag = 0xff; // read data ok
+	sensor_fail_cnt = 0;
 	g_sensorAppCtx.reportFlg = FLG_CHECK_REPORT; // check report table
 }
 
@@ -386,6 +391,16 @@ inline void sensor_calk_and_offset(sensor_th_t *p, s32 t, u32 h) {
  * are what app_EpCfg.c initialises these attributes to. */
 static void sensor_invalidate_values(void) {
 	sensor_ht.flag = 0; // no valid data
+	/* Only tell the coordinator after several consecutive failures. A single
+	 * miss is common and self-corrects, since read_sensor() re-runs
+	 * check_sensor() every time: a sensor that is briefly not ready after a
+	 * battery change recovers on its own within a cycle or two. Publishing the
+	 * invalid markers on the first miss would flap the entity to unavailable
+	 * and back for no useful reason. The screen still shows EEEE immediately,
+	 * which is the right place for an instant indication. */
+	if(++sensor_fail_cnt < SENSOR_FAIL_CONFIRM_CNT)
+		return;
+	sensor_fail_cnt = SENSOR_FAIL_CONFIRM_CNT; // do not wrap on a long outage
 	g_zcl_temperatureAttrs.measuredValue = 0x8000;
 	g_zcl_relHumidityAttrs.measuredValue = 0xffff;
 	g_sensorAppCtx.reportFlg = FLG_CHECK_REPORT; // report the invalid value now
