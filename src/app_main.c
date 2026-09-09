@@ -181,16 +181,23 @@ B2.0 | 0x3C         | 0x44   (SHT4x)  | Test   original string HW
             ble_attr.my_HardStr[3] = '0';
 #endif
         }
+    } else if (scr.i2c_address == N16_I2C_ADDR) {
+        /* Must be tested before the B16 arm. N16_I2C_ADDR is 1 and
+         * B16_I2C_ADDR is 0, so this used to sit inside `i2c_address == 0` as
+         * `0 == 1` and could never be true, while a real N1.6 matched no arm at
+         * all and kept the compile-time default hwVersion of BOARD. Since
+         * BOARD_LYWSD03MMC and BOARD_LYWSD03MMC_B15 are both 10, an N1.6
+         * reported itself as a B1.5 and the two were indistinguishable. */
+        g_zcl_basicAttrs.hwVersion = BOARD_LYWSD03MMC_N16; // N1.6
+#if USE_BLE
+        ble_attr.my_HardStr[0] = 'N';
+        ble_attr.my_HardStr[3] = '6';
+#endif
     } else if (scr.i2c_address == (B16_I2C_ADDR << 1)) {
         if (sensor_ht.sensor_type == TH_SENSOR_SHTC3) { // (sensor_version == 0)
             g_zcl_basicAttrs.hwVersion = BOARD_LYWSD03MMC_B15; // B1.5
 #if USE_BLE
             ble_attr.my_HardStr[3] = '5';
-#endif
-        } else if (scr.i2c_address == N16_I2C_ADDR) {
-            g_zcl_basicAttrs.hwVersion = BOARD_LYWSD03MMC_N16; // N1.6
-#if USE_BLE
-            ble_attr.my_HardStr[3] = '1';
 #endif
         } else {
             g_zcl_basicAttrs.hwVersion = BOARD_LYWSD03MMC_B16; // B1.6
