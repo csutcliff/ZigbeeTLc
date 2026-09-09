@@ -243,16 +243,24 @@ u8 is_comfort(s16 t, u16 h) {
 #define DISPLAY_BATTERY_LOW_LEVEL	DISPLAY_BATTERY_LOW_PCT
 #endif
 
+/* Divide with rounding away from zero.
+ * C integer division truncates toward zero, so the usual (v + d/2) / d rounds
+ * the wrong way for negative values: -1.04 C (temp = -104) came out as -0.9
+ * rather than -1.0, and -10.00 C as 14.1 F rather than 14.0 F. */
+static inline s32 div_round(s32 v, s32 d) {
+	return (v < 0) ? ((v - d / 2) / d) : ((v + d / 2) / d);
+}
+
 void show_th(void) {
 #ifdef ZCL_THERMOSTAT_UI_CFG
     		if (g_zcl_thermostatUICfgAttrs.TemperatureDisplayMode) {
     			// (°F) = (Temperature in degrees Celsius (°C) * 9/5) + 32.
-    			show_big_number_x10(((sensor_ht.temp * 9 + 25) / 50) + 320, TEMP_SYMBOL_F); // convert C to F
+    			show_big_number_x10(div_round(sensor_ht.temp * 9, 50) + 320, TEMP_SYMBOL_F); // convert C to F
     		} else {
-    			show_big_number_x10((sensor_ht.temp + 5) / 10, TEMP_SYMBOL_C);
+    			show_big_number_x10(div_round(sensor_ht.temp, 10), TEMP_SYMBOL_C);
     		}
 #else // !ZCL_THERMOSTAT_UI_CFG
-    		show_big_number_x10((sensor_ht.temp  + 5) / 10, TEMP_SYMBOL_C);
+    		show_big_number_x10(div_round(sensor_ht.temp, 10), TEMP_SYMBOL_C);
 #endif // ZCL_THERMOSTAT_UI_CFG
 
 #ifdef USE_DISPLAY_SMALL_NUMBER_X10
