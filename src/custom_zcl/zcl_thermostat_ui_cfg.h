@@ -33,6 +33,11 @@
  * cluster's config. */
 #define ZCL_THERMOSTAT_UI_CFG_ATTRID_EPD_REFRESH_MODE	0x0120
 #define ZCL_THERMOSTAT_UI_CFG_ATTRID_EPD_REFRESH_CNT	0x0121
+/* Read-only: display updates since the last refresh, so the interval can be
+ * chosen from what the panel actually does rather than guessed. */
+#define ZCL_THERMOSTAT_UI_CFG_ATTRID_EPD_UPDATES		0x0122
+/* Write non-zero to force a refresh now. Self-clearing, never persisted. */
+#define ZCL_THERMOSTAT_UI_CFG_ATTRID_EPD_REFRESH_NOW	0x0123
 /* The EPD_REFRESH_* mode values live in lcd.h, next to the display state, so
  * that the drivers can see them without pulling in the ZCL headers. */
 

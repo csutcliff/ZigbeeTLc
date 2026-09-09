@@ -431,6 +431,13 @@ const zclAttrInfo_t relative_humdity_attrTbl2[] =
 #endif // ZCL_RELATIVE_HUMIDITY
 
 #ifdef ZCL_THERMOSTAT_UI_CFG
+#ifdef USE_EPD
+/* Kept outside zcl_thermostatUICfgAttr_t on purpose: that struct is compared
+ * and written to flash whenever any of it changes, and a self-clearing trigger
+ * must not cause a flash write. Declared in lcd.h, acted on by task_lcd(). */
+u8 epd_refresh_now;
+#endif
+
 zcl_thermostatUICfgAttr_t g_zcl_thermostatUICfgAttrs;
 const zcl_thermostatUICfgAttr_t g_zcl_thermostatUICfgDefault = {
 		.temp_offset = 0,
@@ -476,6 +483,8 @@ const zclAttrInfo_t thermostat_ui_cfg_attrTbl[] =
 #ifdef USE_EPD
 	{ ZCL_THERMOSTAT_UI_CFG_ATTRID_EPD_REFRESH_MODE,   ZCL_DATA_TYPE_ENUM8,    ACCESS_CONTROL_READ | ACCESS_CONTROL_WRITE, (u8*)&g_zcl_thermostatUICfgAttrs.epdRefreshMode },
 	{ ZCL_THERMOSTAT_UI_CFG_ATTRID_EPD_REFRESH_CNT,    ZCL_DATA_TYPE_UINT16,   ACCESS_CONTROL_READ | ACCESS_CONTROL_WRITE, (u8*)&g_zcl_thermostatUICfgAttrs.epdRefreshCnt },
+	{ ZCL_THERMOSTAT_UI_CFG_ATTRID_EPD_UPDATES,        ZCL_DATA_TYPE_UINT16,   ACCESS_CONTROL_READ,                        (u8*)&scr.upd_cnt },
+	{ ZCL_THERMOSTAT_UI_CFG_ATTRID_EPD_REFRESH_NOW,    ZCL_DATA_TYPE_UINT8,    ACCESS_CONTROL_READ | ACCESS_CONTROL_WRITE, (u8*)&epd_refresh_now },
 #endif
 
 #if USE_TRIGGER

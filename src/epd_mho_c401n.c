@@ -368,6 +368,7 @@ void init_lcd(void) {
     scr.stage = 1; // Update/Init, stage 1
     scr.updated = 0;
     scr.refresh_cnt = g_zcl_thermostatUICfgAttrs.epdRefreshCnt;
+    scr.upd_cnt = 0; // a full init is a refresh
     //memset(scr.display_buff, 0, sizeof(scr.display_buff));
     memset(scr.display_cmp_buff, 0, sizeof(scr.display_cmp_buff));
     gpio_write(EPD_RST, HIGH);
@@ -410,11 +411,17 @@ __attribute__((optimize("-Os"))) int task_lcd(void) {
 			transmit(0, 0x0AD);
 		default:
 			if((!scr.display_off) // g_zcl_thermostatUICfgAttrs.display_off
-			&& memcmp(scr.display_cmp_buff, scr.display_buff, sizeof(scr.display_buff))) {
+			&& (epd_refresh_now
+			 || memcmp(scr.display_cmp_buff, scr.display_buff, sizeof(scr.display_buff)))) {
 				scr.stage = 1;
-				if (g_zcl_thermostatUICfgAttrs.epdRefreshMode != EPD_REFRESH_OFF
+				/* A manual refresh has to work even when the reading has not
+				 * changed, which on a stable sensor can be a long time. */
+				if (epd_refresh_now
+				 || (g_zcl_thermostatUICfgAttrs.epdRefreshMode != EPD_REFRESH_OFF
 				 && g_zcl_thermostatUICfgAttrs.epdRefreshCnt != 0
-				 && scr.refresh_cnt == 0) {
+				 && scr.refresh_cnt == 0)) {
+					epd_refresh_now = 0;
+					scr.upd_cnt = 0;
 					/* Anti-ghosting refresh. Blank the panel first and leave
 					 * display_buff alone, so the pass after this one sees the
 					 * buffers differ again and redraws the reading.
@@ -431,6 +438,8 @@ __attribute__((optimize("-Os"))) int task_lcd(void) {
 				} else {
 					if (scr.refresh_cnt)
 						scr.refresh_cnt--;
+					if (scr.upd_cnt != 0xffff)
+						scr.upd_cnt++;
 					memcpy(scr.display_cmp_buff, scr.display_buff, sizeof(scr.display_cmp_buff));
 				}
 			} else

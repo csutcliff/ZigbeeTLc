@@ -394,6 +394,7 @@ void init_lcd(void) {
     pm_wait_us(110);
 	scr.display_off = g_zcl_thermostatUICfgAttrs.display_off;
 	scr.refresh_cnt = g_zcl_thermostatUICfgAttrs.epdRefreshCnt;
+	scr.upd_cnt = 0; // a full init is a refresh
     scr.stage = 1;
     scr.updated = 0;
     scr.init = 3;
@@ -511,11 +512,17 @@ int task_lcd(void) {
 			break;
 		default:
 			if(!scr.display_off // g_zcl_thermostatUICfgAttrs.display_off
-			&& memcmp(scr.display_cmp_buff, scr.display_buff, sizeof(scr.display_buff))) {
+			&& (epd_refresh_now
+			 || memcmp(scr.display_cmp_buff, scr.display_buff, sizeof(scr.display_buff)))) {
 				memcpy(scr.display_cmp_buff, scr.display_buff, sizeof(scr.display_buff));
-				if (g_zcl_thermostatUICfgAttrs.epdRefreshMode != EPD_REFRESH_OFF
+				/* A manual refresh has to work even when the reading has not
+				 * changed, which on a stable sensor can be a long time. */
+				if (epd_refresh_now
+				 || (g_zcl_thermostatUICfgAttrs.epdRefreshMode != EPD_REFRESH_OFF
 				 && g_zcl_thermostatUICfgAttrs.epdRefreshCnt != 0
-				 && scr.refresh_cnt == 0) {
+				 && scr.refresh_cnt == 0)) {
+					epd_refresh_now = 0;
+					scr.upd_cnt = 0;
 					/* Full refresh: black, white, then the frame just copied
 					 * in. This panel's init sequence always resets the
 					 * controller, so EPD_REFRESH_CLEAR and
@@ -524,6 +531,8 @@ int task_lcd(void) {
 				} else {
 					if (scr.refresh_cnt)
 						scr.refresh_cnt--;
+					if (scr.upd_cnt != 0xffff)
+						scr.upd_cnt++;
 					scr.init = 0;
 					scr.stage = 1;
 				}
