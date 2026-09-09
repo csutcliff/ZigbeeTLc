@@ -336,6 +336,29 @@ static void epd_reset(void) {
 	sleep_us(110);
 }
 
+/* Wait for the panel to actually pull EPD_BUSY low after a command that starts
+ * a panel operation, rather than assuming it manages that within a fixed 200 us.
+ *
+ * task_lcd() is a while() loop over EPD_BUSY, so if the controller is slower
+ * than the delay, the loop runs the next stage on top of the operation that is
+ * still starting: a second 0xAF over the running refresh, or the 0xAE/0x28/0xAD
+ * power-down arriving 200 us after the refresh was triggered. pvvx's own note
+ * on this delay in the BLE source is "Waiting for EPD BUSY to be setting?",
+ * with the question mark, and issue #199 records that a build without it
+ * produced grey segments.
+ *
+ * Keep the original 200 us as a floor, then poll. Bounded so that a panel which
+ * never asserts BUSY cannot wedge the loop. */
+#define EPD_BUSY_ASSERT_TIMEOUT_US	5000
+_SCR_CODE_SEC_
+static void epd_wait_busy_asserted(void) {
+	u32 t = clock_time();
+	pm_wait_us(200);
+	while (gpio_read(EPD_BUSY)
+	   && (u32)(clock_time() - t) < EPD_BUSY_ASSERT_TIMEOUT_US * CLOCK_16M_SYS_TIMER_CLK_1US)
+		;
+}
+
 void init_lcd(void) {
 	// pulse RST_N low for 110 microseconds
     gpio_write(EPD_RST, LOW);
@@ -380,7 +403,7 @@ __attribute__((optimize("-Os"))) int task_lcd(void) {
 				scr.updated = 1;
 				// EPD_BUSY: ~1000 ms
 			}
-			pm_wait_us(200);
+			epd_wait_busy_asserted();
 			break;
 		case 2: // Update, stage 4
 			transmit(0, 0x0AE);
