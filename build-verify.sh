@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Build every MHO-C401/C401N target and report the delta against the stashed
+# Build every target this fork cares about (the two MHO-C401 e-paper boards and
+# the LYWSD03MMC LCD board) and report the delta against the stashed
 # baseline (which is upstream master, i.e. what pvvx ships).
 #
-# Four targets: two boards x two build variants.
+# Six targets: three boards x two build variants.
 #   z  -> bin/     USE_ZB=0, Zigbee only, the "-z" firmware most people flash
 #   zb -> bin_zb/  USE_ZB=1, dual mode Zigbee + BLE
 # Both matter: the linker runs --gc-sections, so a function only reachable from
@@ -82,6 +83,7 @@ while read -r name board zname; do
 done <<'TARGETS'
 ZMHOC401 BOARD_MHO_C401 MiaoMiaoCe:MHO-C401-z
 ZMHOC401N BOARD_MHO_C401N MiaoMiaoCe:MHO-C401N-z
+Z03MMC BOARD_LYWSD03MMC Xiaomi:LYWSD03MMC-z
 TARGETS
 
 # The build rewrites tracked bin/ and bin_zb/ files; keep the tree to source changes.
