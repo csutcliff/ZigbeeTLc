@@ -1,7 +1,10 @@
 #include "tl_common.h"
 //#include "sensors.h"
 
-#define USE_READ_ADC_CALIBRATION	0
+/* Read the per-chip ADC reference from flash instead of assuming the nominal
+ * 1175 mV. drv_calib_adc_verf() (hw_drv.c) falls back to that nominal value
+ * when a part carries no calibration data, so this is safe on any unit. */
+#define USE_READ_ADC_CALIBRATION	1
 #ifndef ADC_BAT_VREF_MV
 #define ADC_BAT_VREF_MV		1175
 #endif
@@ -98,7 +101,11 @@ void drv_calib_adc_verf(void)
 		/****** Vref = [1175 +First_Byte-255+Second_Byte] mV = [920 + First_Byte + Second_Byte] mV ********/
 		adc_vref_cfg.vref = 920 + adc_vref_calib_value[0] + adc_vref_calib_value[1];
 		/****** Check the one-point calibration value whether is correct ********/
-		if(adc_vref_cfg.vref < ADC_BAT_VREF_MV - 128 || adc_vref_cfg.vref > ADC_BAT_VREF_MV - 127)
+		/* Upper bound was ADC_BAT_VREF_MV - 127, which accepts only a 2 mV
+		 * window and so rejected essentially every one-point calibration,
+		 * falling back to the nominal reference. Telink's own range is
+		 * 1047..1302, i.e. -128..+127 around the nominal 1175. */
+		if(adc_vref_cfg.vref < ADC_BAT_VREF_MV - 128 || adc_vref_cfg.vref > ADC_BAT_VREF_MV + 127)
 			adc_vref_cfg.vref = ADC_BAT_VREF_MV;
 	}
 #endif
