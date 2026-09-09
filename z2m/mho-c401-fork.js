@@ -185,9 +185,15 @@ const definition = {
         {modelID: 'MHO-C401N-z', softwareBuildID: SW_BUILD_ID},
         {modelID: 'MHO-C401N-bz', softwareBuildID: SW_BUILD_ID},
     ],
-    model: 'MHO-C401 (c401fork)',
+    // Must match Z2M's built-in model string. The frontend derives the device
+    // image from it, so a distinctive name here ("MHO-C401 (c401fork)") matched
+    // no known image and the device showed the generic Zigbee logo instead.
+    // Nothing is lost by sharing the name: softwareBuildID, the epd_* controls,
+    // and Z2M's own external-converter marker all identify which definition
+    // matched.
+    model: 'MHO-C401',
     vendor: 'MiaoMiaoCe',
-    description: 'Temperature and Humidity Monitor (csutcliff/ZigbeeTLc fork)',
+    description: 'Temperature and Humidity Monitor (pvxx/ZigbeeTLc, csutcliff fork)',
     extend: [
         m.temperature({reporting: {min: '10_SECONDS', max: '1_HOUR', change: 10}}),
         m.humidity(),
