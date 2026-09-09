@@ -27,6 +27,15 @@
 #define ZCL_THERMOSTAT_UI_CFG_ATTRID_TRIGGER_TRH_H		0x0112
 #define ZCL_THERMOSTAT_UI_CFG_ATTRID_TRIGGER_HST_H		0x0113
 
+/* E-paper anti-ghosting refresh, MHO-C401 and MHO-C401N.
+ * MODE selects what a refresh does, CNT how many display updates apart they
+ * are. CNT 0 also disables it. Both are persisted with the rest of this
+ * cluster's config. */
+#define ZCL_THERMOSTAT_UI_CFG_ATTRID_EPD_REFRESH_MODE	0x0120
+#define ZCL_THERMOSTAT_UI_CFG_ATTRID_EPD_REFRESH_CNT	0x0121
+/* The EPD_REFRESH_* mode values live in lcd.h, next to the display state, so
+ * that the drivers can see them without pulling in the ZCL headers. */
+
 
 status_t zcl_thermostat_ui_cfg_register(u8 endpoint, u16 manuCode, u8 attrNum, const zclAttrInfo_t attrTbl[], cluster_forAppCb_t cb);
 nv_sts_t zcl_thermostatConfig_save(int init);

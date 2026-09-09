@@ -6,7 +6,8 @@
 #include "lcd.h"
 #include "app_main.h"
 
-#define DEF_EPD_REFRESH_CNT	32
+/* DEF_EPD_REFRESH_CNT now lives in board_mho_c401.h, so that the ZCL default
+ * in app_EpCfg.c and this driver cannot disagree. */
 #define LOW     0
 #define HIGH    1
 
@@ -391,7 +392,7 @@ static void reset_lcd(void) {
 	// pulse RST_N low for 110 microseconds
     gpio_write(EPD_RST, LOW);
     pm_wait_us(110);
-	scr.refresh_cnt = DEF_EPD_REFRESH_CNT;
+	scr.refresh_cnt = g_zcl_thermostatUICfgAttrs.epdRefreshCnt;
     scr.stage = 1;
     scr.updated = 0;
     scr.init = 3;
@@ -519,11 +520,18 @@ int task_lcd(void) {
 			if(!scr.display_off // g_zcl_thermostatUICfgAttrs.display_off
 			&& memcmp(scr.display_cmp_buff, scr.display_buff, sizeof(scr.display_buff))) {
 				memcpy(scr.display_cmp_buff, scr.display_buff, sizeof(scr.display_buff));
-				if (scr.refresh_cnt) {
-					scr.refresh_cnt--;
-					scr.init = 0;
-				} else {
+				if (g_zcl_thermostatUICfgAttrs.epdRefreshMode != EPD_REFRESH_OFF
+				 && g_zcl_thermostatUICfgAttrs.epdRefreshCnt != 0
+				 && scr.refresh_cnt == 0) {
+					/* Full refresh: black, white, then the frame just copied
+					 * in. This panel's init sequence always resets the
+					 * controller, so EPD_REFRESH_CLEAR and
+					 * EPD_REFRESH_RESET_CLEAR behave identically here. */
 					reset_lcd(); // pulse RST_N low for 110 microseconds
+				} else {
+					if (scr.refresh_cnt)
+						scr.refresh_cnt--;
+					scr.init = 0;
 				}
 				scr.stage = 1;
 			} else {

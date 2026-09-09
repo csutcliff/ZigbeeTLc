@@ -446,7 +446,11 @@ const zcl_thermostatUICfgAttr_t g_zcl_thermostatUICfgDefault = {
 		.temp_comfort_min = 2000,  // +20.00 C  параметры ГОСТ, СНиП
 		.temp_comfort_max = 2500,  // +25.00 C
 		.humi_comfort_min = 4000,  // 40.00 %
-		.humi_comfort_max = 6000  // 60.00 %
+		.humi_comfort_max = 6000,  // 60.00 %
+#endif
+#ifdef USE_EPD
+		.epdRefreshMode = EPD_REFRESH_CLEAR,
+		.epdRefreshCnt = DEF_EPD_REFRESH_CNT,
 #endif
 #endif
 };
@@ -472,6 +476,10 @@ const zclAttrInfo_t thermostat_ui_cfg_attrTbl[] =
 	{ ZCL_THERMOSTAT_UI_CFG_ATTRID_DISPLAY_OFF,   ZCL_DATA_TYPE_ENUM8,    ACCESS_CONTROL_READ | ACCESS_CONTROL_WRITE, (u8*)&g_zcl_thermostatUICfgAttrs.display_off },
 #endif
 	{ ZCL_THERMOSTAT_UI_CFG_ATTRID_MEASURE_INTERVAL,   ZCL_DATA_TYPE_UINT8,    ACCESS_CONTROL_READ | ACCESS_CONTROL_WRITE, (u8*)&g_zcl_thermostatUICfgAttrs.measureInterval },
+#ifdef USE_EPD
+	{ ZCL_THERMOSTAT_UI_CFG_ATTRID_EPD_REFRESH_MODE,   ZCL_DATA_TYPE_ENUM8,    ACCESS_CONTROL_READ | ACCESS_CONTROL_WRITE, (u8*)&g_zcl_thermostatUICfgAttrs.epdRefreshMode },
+	{ ZCL_THERMOSTAT_UI_CFG_ATTRID_EPD_REFRESH_CNT,    ZCL_DATA_TYPE_UINT16,   ACCESS_CONTROL_READ | ACCESS_CONTROL_WRITE, (u8*)&g_zcl_thermostatUICfgAttrs.epdRefreshCnt },
+#endif
 
 #if USE_TRIGGER
 	{ ZCL_THERMOSTAT_UI_CFG_ATTRID_TRIGGER_TRH_T,   ZCL_DATA_TYPE_INT16,    ACCESS_CONTROL_READ | ACCESS_CONTROL_WRITE, (u8*)&trg.temp_threshold },
@@ -919,6 +927,19 @@ nv_sts_t zcl_thermostatConfig_save(int init)
 			if(zcl_nv_thermostatUiCfg.measureInterval != g_zcl_thermostatUICfgAttrs.measureInterval) {
 				test_set_measure_longpoll_interval(g_zcl_thermostatUICfgAttrs.measureInterval);
 			}
+#ifdef USE_EPD
+			if(zcl_nv_thermostatUiCfg.epdRefreshMode != g_zcl_thermostatUICfgAttrs.epdRefreshMode
+			|| zcl_nv_thermostatUiCfg.epdRefreshCnt != g_zcl_thermostatUICfgAttrs.epdRefreshCnt) {
+				/* Clamp before the value is copied into the NV shadow below. */
+				if(g_zcl_thermostatUICfgAttrs.epdRefreshMode > EPD_REFRESH_MODE_MAX)
+					g_zcl_thermostatUICfgAttrs.epdRefreshMode = EPD_REFRESH_MODE_MAX;
+				if(g_zcl_thermostatUICfgAttrs.epdRefreshCnt > EPD_REFRESH_CNT_MAX)
+					g_zcl_thermostatUICfgAttrs.epdRefreshCnt = EPD_REFRESH_CNT_MAX;
+				/* Restart the interval so a new count takes effect now rather
+				 * than after the old one has run down. */
+				scr.refresh_cnt = g_zcl_thermostatUICfgAttrs.epdRefreshCnt;
+			}
+#endif
 			memcpy(&zcl_nv_thermostatUiCfg, &g_zcl_thermostatUICfgAttrs,
 					sizeof(g_zcl_thermostatUICfgAttrs));
 			st = nv_flashWriteNew(1, NV_MODULE_APP,  NV_ITEM_APP_THERMOSTAT_UI_CFG,

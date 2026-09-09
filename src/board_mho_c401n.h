@@ -68,6 +68,9 @@ None: 0.1..0.3, 0.5..0.7, 2.3..2.7, 4.3..4.7, 5.1, 5,3, 5.5, 5.7, 6.1, 6.3, 6.7,
 #define SHOW_SMILEY			1
 #define	USE_DISPLAY			4
 #define USE_EPD				50 // while(task_lcd()) pm_wait_ms(50 ms);
+// Default display updates between anti-ghosting refreshes. Runtime settable
+// over ZCL, see ZCL_THERMOSTAT_UI_CFG_ATTRID_EPD_REFRESH_CNT.
+#define DEF_EPD_REFRESH_CNT	1024
 #define LCD_BUF_SIZE		16
 #define LCD_INIT_DELAY()
 #define USE_DISPLAY_CONNECT_SYMBOL		2 // =2 inverted

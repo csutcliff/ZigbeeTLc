@@ -45,6 +45,10 @@ EPD: https://github.com/znanev/MHO-C401
 #define SHOW_SMILEY			1
 #define	USE_DISPLAY			7
 #define USE_EPD				50 // while(task_lcd()) pm_wait_ms(50 ms);
+// Default display updates between anti-ghosting refreshes. Runtime settable
+// over ZCL, see ZCL_THERMOSTAT_UI_CFG_ATTRID_EPD_REFRESH_CNT.
+// The original Xiaomi firmware does a full refresh every 32 partial updates.
+#define DEF_EPD_REFRESH_CNT	32
 #define LCD_BUF_SIZE		18
 #define LCD_INIT_DELAY()
 #define USE_DISPLAY_CONNECT_SYMBOL		2 // =2 inverted

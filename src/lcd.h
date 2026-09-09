@@ -50,6 +50,17 @@ void show_temp_symbol(u8 symbol);
 
 #ifdef USE_EPD
 
+/* Anti-ghosting refresh policy, settable at runtime over ZCL. See
+ * ZCL_THERMOSTAT_UI_CFG_ATTRID_EPD_REFRESH_MODE / _CNT.
+ * The MHO-C401's init sequence always resets the controller, so CLEAR and
+ * RESET_CLEAR behave identically on that panel. */
+#define EPD_REFRESH_OFF			0	// never run a full refresh
+#define EPD_REFRESH_CLEAR		1	// blank the panel, then redraw
+#define EPD_REFRESH_RESET_CLEAR	2	// reset the controller, blank, then redraw
+#define EPD_REFRESH_MODE_MAX	EPD_REFRESH_RESET_CLEAR
+
+#define EPD_REFRESH_CNT_MAX		4096
+
 typedef struct  {
 	u8 display_off; // !g_zcl_thermostatUICfgAttrs.display_off
 	u8 init;
