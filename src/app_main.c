@@ -461,8 +461,19 @@ void app_task(void)
 #if !USE_BLE
 #if	USE_SENSOR_TH
 		if(sensor_ht.read_callback) {
+			/* A measurement is in flight. Stall the core until it is due and
+			 * then finish it, rather than returning to the main loop, which
+			 * polled clock_time() at full clock for the whole timeout and
+			 * skipped drv_pm_lowPowerEnter() entirely for that period. On the
+			 * SHTC3 family, which is what an SHTV3 answers as, that is 11 ms
+			 * of the core running flat out every measurement cycle.
+			 * init_sensor() already waits for this same timeout this way. */
+			u32 elapsed = clock_time() - sensor_ht.start_measure_tik;
+			u32 total = (u32)sensor_ht.measure_timeout_us * CLOCK_16M_SYS_TIMER_CLK_1US;
+			if(elapsed < total)
+				pm_wait_us((total - elapsed) / CLOCK_16M_SYS_TIMER_CLK_1US);
 			sensor_ht.read_callback();
-		} else
+		}
 #endif // USE_SENSOR_TH
 		{
 			// no timer: the device would sleep until a button press
