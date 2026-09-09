@@ -807,6 +807,11 @@ nv_sts_t zcl_thermostatConfig_save(int init)
 				sizeof(zcl_nv_thermostatUiCfg), (u8*)&zcl_nv_thermostatUiCfg) != NV_SUCC){
 			memcpy(&zcl_nv_thermostatUiCfg, &g_zcl_thermostatUICfgDefault,
 					sizeof(zcl_nv_thermostatUiCfg));
+			/* Persist the defaults only when the item was missing or invalid.
+			 * init_nv_app() used to write this unconditionally on every cold
+			 * boot, which rewrote byte-identical data after a successful read. */
+			st = nv_flashWriteNew(1, NV_MODULE_APP,  NV_ITEM_APP_THERMOSTAT_UI_CFG,
+					sizeof(zcl_nv_thermostatUiCfg), (u8*)&zcl_nv_thermostatUiCfg);
 		}
 		memcpy(&g_zcl_thermostatUICfgAttrs, &zcl_nv_thermostatUiCfg,
 				sizeof(g_zcl_thermostatUICfgAttrs));
@@ -929,9 +934,6 @@ void init_nv_app(void) {
 #endif
 #ifdef ZCL_DIHUMIDIFICATION_CONTROL
 	zcl_dhumConfig_save(1);
-#endif
-#ifdef ZCL_THERMOSTAT_UI_CFG
-	nv_flashWriteNew(1, NV_MODULE_APP,  NV_ITEM_APP_THERMOSTAT_UI_CFG, sizeof(zcl_nv_thermostatUiCfg), (u8*)&zcl_nv_thermostatUiCfg);
 #endif
 #if	USE_DISPLAY
 	if(!g_zcl_thermostatUICfgAttrs.display_off) {
