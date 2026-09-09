@@ -426,14 +426,31 @@ void update_lcd(void){
 }
 
 void display_off(void) {
+	if (scr.i2c_address == (B19_I2C_ADDR << 1)) {
+		// B1.9 BU9792AFUV has a real display-off command
+		send_i2c_bytes(B19_I2C_ADDR << 1, (u8 *) lcd_off_b19, sizeof(lcd_off_b19));
+	} else {
+		/* Every other variant has no such command, so blank the panel instead.
+		 * This used to write to the B1.9 controller address whatever hardware
+		 * was actually detected: on a B1.4 (0x78) the write was simply NAKed,
+		 * and on the B1.5/B1.6 UART and N1.6 SPI panels there is no I2C LCD at
+		 * all. In every one of those cases the only effect was setting
+		 * display_off, after which update_lcd() returned early forever and the
+		 * screen kept showing its last reading. */
+		memset(scr.display_buff, 0, sizeof(scr.display_buff));
+		memset(scr.display_cmp_buff, 0, sizeof(scr.display_cmp_buff));
+		send_to_lcd(); // sends display_cmp_buff
+	}
 	scr.display_off = 1;
-	send_i2c_bytes(B19_I2C_ADDR << 1, (u8 *) lcd_off_b19, sizeof(lcd_off_b19));
 }
 
 void init_lcd(void){
 	unsigned char ret = 0;
 	scr.display_off = g_zcl_thermostatUICfgAttrs.display_off;
-	memset(&scr.display_buff, BIT(1), sizeof(scr.display_buff)); // display off "--- ---"
+	/* Blank rather than "--- ---" when the display is meant to be off, so that
+	 * the UART (B1.5/B1.6) and SPI (N1.6) paths below, which return early and
+	 * have no display-off handling of their own, still push an empty frame. */
+	memset(&scr.display_buff, scr.display_off ? 0 : BIT(1), sizeof(scr.display_buff));
 /*
 	//GPIO_PB6 set in app_config.h!
 	//gpio_setup_up_down_resistor(GPIO_PB6, PM_PIN_PULLUP_10K); // LCD on low temp needs this, its an unknown pin going to the LCD controller chip
