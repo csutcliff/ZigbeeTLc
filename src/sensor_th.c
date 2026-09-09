@@ -378,6 +378,19 @@ inline void sensor_calk_and_offset(sensor_th_t *p, s32 t, u32 h) {
 	g_sensorAppCtx.reportFlg = FLG_CHECK_REPORT; // check report table
 }
 
+/* Mark the reported values invalid after a failed read.
+ * The screen switches to the error display on its own, but the ZCL attributes
+ * used to keep their last good reading, so the maxInterval report went on
+ * publishing a plausible stale temperature indefinitely and the entity never
+ * showed as unavailable. 0x8000 and 0xffff are the ZCL invalid markers, and
+ * are what app_EpCfg.c initialises these attributes to. */
+static void sensor_invalidate_values(void) {
+	sensor_ht.flag = 0; // no valid data
+	g_zcl_temperatureAttrs.measuredValue = 0x8000;
+	g_zcl_relHumidityAttrs.measuredValue = 0xffff;
+	g_sensorAppCtx.reportFlg = FLG_CHECK_REPORT; // report the invalid value now
+}
+
 
 //=================================== AHT20_30
 #if USE_SENSOR_AHT20_30
@@ -487,8 +500,10 @@ void measure_shtc3_callback(void) {
 		if(!re) {
 			re = send_i2c_word(p->i2c_addr, SHTC3_GO_SLEEP); // Sleep command of the sensor
 		}
-		if(re)
+		if(re) {
 			p->i2c_addr = 0;
+			sensor_invalidate_values();
+		}
 	}
 }
 #endif // USE_SENSOR_SHTC3
@@ -839,6 +854,7 @@ int read_sensor(void) {
 	read_rh_sensor();
 #endif
 	if(re) {
+		sensor_invalidate_values();
 		check_sensor();
 	}
 	return re;
