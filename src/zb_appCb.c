@@ -18,6 +18,7 @@
 #include "app_main.h"
 #include "app_ui.h"
 #include "lcd.h"
+#include "battery.h"
 #include "reporting.h"
 
 #ifdef ZCL_OTA
@@ -530,11 +531,16 @@ void sensorDevice_otaProcessMsgHandler(u8 evt, u8 status)
 {
 	if(evt == OTA_EVT_START){
 		if(status == ZCL_STA_SUCCESS){
+			/* Suppress the low-battery deep sleep for the duration. The cell
+			 * sags under a continuous transfer and a single sample below
+			 * BATTERY_LOW_POWER used to abort the download for 180 seconds. */
+			ota_in_progress = 1;
 			app_pollRateApply();
 		}else{
 
 		}
 	}else if(evt == OTA_EVT_COMPLETE){
+		ota_in_progress = 0;
 		set_PollRate(); // zb_setPollRate(DEFAULT_POLL_RATE);
 
 		if(status == ZCL_STA_SUCCESS){
@@ -543,6 +549,7 @@ void sensorDevice_otaProcessMsgHandler(u8 evt, u8 status)
 			sensorDevice_otaQueryStart();
 		}
 	}else if(evt == OTA_EVT_IMAGE_DONE){
+		ota_in_progress = 0;
 		set_PollRate(); // zb_setPollRate(DEFAULT_POLL_RATE);
 	}
 }
