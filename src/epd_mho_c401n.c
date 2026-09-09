@@ -422,7 +422,7 @@ void show_ble_ota(void) {
 	epd_set_digit(scr.display_buff, Symbol_o, top_left);
 	epd_set_digit(scr.display_buff, Symbol_t, top_middle);
 	epd_set_digit(scr.display_buff, Symbol_a, top_right);
-	scr.display_buff[9] |= BIT(6); // "ble"
+	show_ble_symbol(true); // "BLE" is 0.4 on this panel, not 9.6 (that is CGG1N)
 }
 
 void show_err_sensors(void) {
