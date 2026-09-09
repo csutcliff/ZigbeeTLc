@@ -324,6 +324,18 @@ void show_small_number(s16 number, bool percent){
 }
 
 
+/* Pulse RST_N low for 110 us and let the controller settle before the next
+ * command is clocked out. The periodic refresh path used to open-code this
+ * with a 50 us pulse and no settling time at all; every other reset in this
+ * codebase, this file's own init_lcd() included, uses 110 us. */
+_SCR_CODE_SEC_
+static void epd_reset(void) {
+	gpio_write(EPD_RST, LOW);
+	sleep_us(110);
+	gpio_write(EPD_RST, HIGH);
+	sleep_us(110);
+}
+
 void init_lcd(void) {
 	// pulse RST_N low for 110 microseconds
     gpio_write(EPD_RST, LOW);
@@ -383,11 +395,9 @@ __attribute__((optimize("-Os"))) int task_lcd(void) {
 				if (scr.refresh_cnt) {
 					scr.refresh_cnt--;
 				} else {
-				    gpio_write(EPD_RST, LOW);
-				    sleep_us(50);
+				    epd_reset();
 				    scr.refresh_cnt = DEF_EPD_REFRESH_CNT; // 1024
 				    scr.updated = 0;
-				    gpio_write(EPD_RST, HIGH);
 				}
 #endif
 			} else
