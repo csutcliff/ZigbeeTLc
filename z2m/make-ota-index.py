@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate Zigbee2MQTT OTA index entries for the MHO-C401 / MHO-C401N builds.
+"""Generate Zigbee2MQTT OTA index entries for this fork's builds.
 
 Reads the ZCL OTA header out of the .zigbee files that `make` produces and emits
 the entries for Z2M's `ota.zigbee_ota_override_index_location` file.
@@ -24,12 +24,12 @@ import sys
 OTA_MAGIC = 0x0BEEF11E
 HDR = struct.Struct("<IHHHHHIH")  # magic, hdrver, hdrlen, fieldctl, manuf, imgtype, filever, stackver
 
-# Only the two boards this fork exists for.
+# The three boards this fork exists for.
 WANTED = {
-    0x0201: "MHO-C401",
-    0x0208: "MHO-C401N",
+    0x0201: ("MHO-C401", ["MiaoMiaoCe"]),
+    0x0208: ("MHO-C401N", ["MiaoMiaoCe"]),
+    0x020a: ("LYWSD03MMC", ["Xiaomi"]),
 }
-MANUFACTURER_NAME = ["MiaoMiaoCe"]
 
 
 def parse(path):
@@ -73,7 +73,7 @@ def main():
             found[info["imageType"]] = info
 
     if not found:
-        sys.exit(f"no MHO-C401/C401N .zigbee files found in {args.bin_dir}/")
+        sys.exit(f"no matching .zigbee files found in {args.bin_dir}/")
 
     entries = []
     for imgtype in sorted(found):
@@ -86,14 +86,14 @@ def main():
             "fileVersion": info["fileVersion"],
             "fileSize": info["fileSize"],
             "sha512": info["sha512"],
-            "manufacturerName": MANUFACTURER_NAME,
+            "manufacturerName": WANTED[imgtype][1],
         }
         if args.force:
             entry["force"] = True
         entries.append(entry)
         v = info["fileVersion"]
         print(
-            f"{WANTED[imgtype]:<10} imageType={imgtype} (0x{imgtype:04x})  "
+            f"{WANTED[imgtype][0]:<11} imageType={imgtype} (0x{imgtype:04x})  "
             f"fileVersion={v} (0x{v:08x})  {info['fileSize']} bytes  {os.path.basename(info['path'])}",
             file=sys.stderr,
         )
