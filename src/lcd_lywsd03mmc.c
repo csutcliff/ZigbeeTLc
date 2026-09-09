@@ -364,21 +364,26 @@ void show_big_number_x10(s16 number, u8 symbol){
 	} else {
 		/* number: -995..19995 */
 		scr.display_buff[5] = 0;
+		/* Take the sign BEFORE dividing. C truncates toward zero, so rounding
+		 * a negative and negating afterwards lost a whole degree: -10.0 C
+		 * displayed as -9, -15.04 C as -14, -30.0 C as -29. */
 		if (number > 1999 || number < -99) {
 			/* number: -995..-100, 2000..19995 */
-			// round(div 10)
-			number += 5;
-			number /= 10;
+			if (number < 0) {
+				number = -number;
+				scr.display_buff[5] = BIT(1); // "-"
+			}
+			number = (number + 5) / 10; // round(div 10)
 			// show no point: -99..-10, 200..1999
 		} else {
 			// show point: -9.9..199.9
 			scr.display_buff[4] = BIT(3); // point
+			if (number < 0) {
+				number = -number;
+				scr.display_buff[5] = BIT(1); // "-"
+			}
 		}
-		/* show: -99..1999 */
-		if (number < 0) {
-			number = -number;
-			scr.display_buff[5] = BIT(1); // "-"
-		}
+		/* show: 0..1999 */
 		/* number: -99..1999 */
 		if (number > 999) scr.display_buff[5] |= 0x08; // "1" 1000..1999
 		if (number > 99) scr.display_buff[5] |= display_numbers[number / 100 % 10];
