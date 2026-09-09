@@ -388,7 +388,10 @@ void sensorDevice_zclIdentifyCmdHandler(u8 endpoint, u16 srcAddr, u16 identifyTi
 		light_blink_stop();
 	}else{
 		if(!g_sensorAppCtx.timerIdentifyEvt){
-			light_blink_start(identifyTime, 500, 500);
+			/* light_blink_start() takes a u8, so an identifyTime that is a
+			 * non-zero multiple of 256 truncated to 0 and, with the underflow
+			 * in zclLightTimerCb(), ran 256 cycles instead of stopping. */
+			light_blink_start((identifyTime > 255) ? 255 : (u8)identifyTime, 500, 500);
 			g_sensorAppCtx.timerIdentifyEvt = TL_ZB_TIMER_SCHEDULE(sensorDevice_zclIdentifyTimerCb, NULL, 1000);
 		}
 	}

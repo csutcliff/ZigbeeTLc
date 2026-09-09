@@ -98,8 +98,11 @@ s32 zclLightTimerCb(void *arg)
 	u32 interval = 0;
 
 	if(g_sensorAppCtx.sta == g_sensorAppCtx.oriSta){
-		g_sensorAppCtx.times--;
-		if(g_sensorAppCtx.times <= 0){
+		/* times is unsigned, so "times-- then <= 0" wrapped 0 to 255 and ran a
+		 * further 256 cycles instead of stopping. Decrement only when set. */
+		if(g_sensorAppCtx.times)
+			g_sensorAppCtx.times--;
+		if(g_sensorAppCtx.times == 0){
 			g_sensorAppCtx.timerLedEvt = NULL;
 			return -1;
 		}
