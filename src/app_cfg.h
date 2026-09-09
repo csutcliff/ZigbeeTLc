@@ -270,12 +270,22 @@
  * Z2M to treat the build as different. */
 #define ZCL_BASIC_SW_BUILD_ID	{13,'c','4','0','1','f','o','r','k','-','0','0','0','1'}
 
-// Bump this whenever zcl_thermostatUICfgAttr_t (or any other saved struct)
-// changes layout: init_nv_app() compares it against the stored value and wipes
-// NV_MODULE_APP on a mismatch, so a stale item is never read into a struct of
-// a different size. Raised from 0x3D012400 when the e-paper refresh mode and
-// count attributes were added.
-#define USE_NV_APP	(0x3D012500 | BOARD)
+// Do NOT bump this for a struct layout change, despite the temptation.
+// init_nv_app() reacts to a mismatch by calling nv_resetAll(), which erases
+// every NV module including the Zigbee network parameters, so the device leaves
+// the network and has to be re-paired. Upstream never changes it for that
+// reason.
+//
+// A layout change is already safe without it. nv_flashReadNew() passes
+// lenCheck, and nv_index_read_op() only accepts a stored item whose length is a
+// multiple of the requested length, so growing zcl_thermostatUICfgAttr_t from
+// 16 to 20 bytes (16 % 20 != 0) simply fails to find the old item and the
+// defaults are loaded and written instead.
+//
+// Check that arithmetic before adding fields: the match is "stored % requested
+// == 0", so shrinking a struct to an exact divisor of its old size WOULD read
+// the stale item.
+#define USE_NV_APP	(0x3D012400 | BOARD)	// ID, not change!
 
 typedef enum{
 	NV_ITEM_APP_DEV_VER	= 0x60,
