@@ -1,7 +1,7 @@
 /********************************************************************************************************
- * @file    board_mho_c401n.h
+ * @file    board_mho_c401.h
  *
- * @brief   This is the header file for board_mho_c401n
+ * @brief   This is the header file for board_mho_c401
  *
  *******************************************************************************************************/
 #ifndef _BOARD_MHO_C401_H_
@@ -18,15 +18,15 @@
 TLSR8251F512ET24
 
 GPIO_PA5 - used EPD_BUSY
-GPIO_PA6 - used EPD_CSB
+GPIO_PA6 - used EPD_RST
 GPIO_PA7 - SWS, free, (debug TX)
 GPIO_PB6 - used KEY, pcb mark "P5" (TRG)
-GPIO_PB7 - used EPD_RST2
+GPIO_PB7 - used EPD_SDA
 GPIO_PC2 - SDA, used I2C
 GPIO_PC3 - SCL, used I2C
-GPIO_PC4 - used EPD_SCL
-GPIO_PD2 - used EPD_SDA
-GPIO_PD7 - used EPD_RST
+GPIO_PC4 - used EPD_SHD (held high by its pull-up, never driven)
+GPIO_PD2 - used EPD_CSB
+GPIO_PD7 - used EPD_SCL
 
 EPD: https://github.com/znanev/MHO-C401
 

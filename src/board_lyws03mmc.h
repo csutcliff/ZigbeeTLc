@@ -115,7 +115,7 @@ GPIO_PD7 - free [B1.4], UART TX LCD [B1.6], pcb mark "P7"
 
 #define PD7_FUNC			AS_GPIO
 #define PD7_INPUT_ENABLE	1
-#define PULL_WAKEUP_SRC_PD7	PM_PIN_PULLUP_1M
+// (PULL_WAKEUP_SRC_PD7 already defined above with the same value)
 
 #define PB7_FUNC			AS_GPIO
 #define PB7_INPUT_ENABLE	1

@@ -67,7 +67,7 @@ const u8 lcd_init_b19[]	=	{
 		0xfc, // All pixel control (APCTL): Normal
 		0xc8, // Mode Set (MODE SET): Display ON, 1/3 Bias
 		0x00, // Set Address 0
-		// Clear 18 bytes RAM BU9792AFUV
+		// BU9792AFUV init; the trailing bytes are overwritten by show_reset_screen()
 		0,0, 0,0, 0,0, 0,0,
 		LCD_SYM_o,LCD_SYM_o, 0,LCD_SYM_o, LCD_SYM_o,LCD_SYM_o, 0,0, 0,0
 };
@@ -212,7 +212,7 @@ static unsigned char lcd_send_uart(int flg_rx) {
 }
 
 _SCR_CODE_SEC_
-u8 reverse(u8 revByte) {
+static u8 reverse(u8 revByte) {
    revByte = (revByte & 0xF0) >> 4 | (revByte & 0x0F) << 4;
    revByte = (revByte & 0xCC) >> 2 | (revByte & 0x33) << 2;
    revByte = (revByte & 0xAA) >> 1 | (revByte & 0x55) << 1;
@@ -408,7 +408,7 @@ void show_small_number(s16 number, bool percent){
 	} else {
 		if (number < 0) {
 			number = -number;
-			scr.display_buff[1] = 2; // "-"
+			scr.display_buff[1] |= 2; // "-"  (was '=', which dropped the battery bit)
 		}
 		if (number > 9) scr.display_buff[1] |= display_numbers[number / 10 % 10];
 		scr.display_buff[0] |= display_numbers[number %10];
@@ -537,14 +537,19 @@ void init_lcd(void){
 #if	USE_DISPLAY_CLOCK
 _SCR_CODE_SEC_
 void show_clock(void) {
-	u32 tmp = wrk.utc_time_sec / 60;
+	/* Was a verbatim copy of an e-paper driver's version, calling
+	 * epd_set_digit() with bottom_left/top_middle position enums and reading
+	 * `wrk.utc_time_sec`. None of those exist for this board or anywhere in the
+	 * Zigbee tree, so enabling USE_DISPLAY_CLOCK failed to build. Restored to
+	 * the direct segment writes pvvx's BLE original uses. */
+	u32 tmp = utc_time_sec / 60;
 	u32 min = tmp % 60;
 	u32 hrs = tmp / 60 % 24;
 	memset(scr.display_buff, 0, sizeof(scr.display_buff));
-	epd_set_digit(scr.display_buff, min / 10 % 10, bottom_left);
-	epd_set_digit(scr.display_buff, min % 10, bottom_middle);
-	epd_set_digit(scr.display_buff, hrs / 10 % 10, top_left);
-	epd_set_digit(scr.display_buff, hrs % 10, top_middle);
+	scr.display_buff[0] = display_numbers[min % 10];
+	scr.display_buff[1] = display_numbers[min / 10 % 10];
+	scr.display_buff[4] = display_numbers[hrs % 10];
+	scr.display_buff[5] = display_numbers[hrs / 10 % 10];
 }
 #endif // USE_CLOCK
 
@@ -560,7 +565,7 @@ void show_ble_ota(void) {
 }
 
 void show_err_sensors(void) {
-	scr.display_buff[0] = LCD_SYM_E, // "E"
+	scr.display_buff[0] = LCD_SYM_E; // "E"
 	scr.display_buff[1] &= BIT(3); // "bat"
 	scr.display_buff[1] |= LCD_SYM_E; // "E"
 	scr.display_buff[2] &= BIT(4); // "ble"
