@@ -54,6 +54,18 @@ EPD: https://github.com/znanev/MHO-C401
 #define USE_DISPLAY_CONNECT_SYMBOL		2 // =2 inverted
 
 // DISPLAY GPIO
+/* EPD_SHD is never driven by any code; the pull-up is the only thing acting on
+ * it. The 10K here against the MHO-C401N's 1M for the equivalent pin looked
+ * like it might cost up to ~300 uA if the panel loaded the node.
+ *
+ * Measured on hardware 2026-09-09, referenced to the cell's positive face: PC4
+ * reads 0 V relative to VDD once the firmware is up, i.e. it sits at the rail,
+ * so no current flows through the pull-up. It reads -3 V only during boot,
+ * before gpio_init() applies PULL_WAKEUP_SRC_PC4. The trace runs to C13, a
+ * capacitor, which is consistent: a decoupling node with no DC path.
+ *
+ * Leave the value alone. There is nothing to save, and weakening it risks not
+ * holding SHD high through power transitions. */
 #define EPD_SHD				GPIO_PC4 // should be high
 #define PULL_WAKEUP_SRC_PC4 PM_PIN_PULLUP_10K
 
