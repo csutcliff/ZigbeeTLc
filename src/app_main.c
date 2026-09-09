@@ -365,8 +365,14 @@ s32 sensors_task(void *arg) {
 	task_lcd();
 #endif
 #if !USE_BLE && USE_DISPLAY
-	if(zb_isDeviceJoinedNwk())
+	if(zb_isDeviceJoinedNwk()) {
+			/* Returning -1 makes the SDK free the event, so drop our reference
+			 * to it as well. set_PollRate() and the join-failure paths in
+			 * zb_appCb.c both test this handle, and would otherwise cancel or
+			 * skip re-arming a timer slot that has since been reused. */
+			g_sensorAppCtx.timerTaskEvt = NULL;
 			return -1; // delete timer
+	}
 #endif
 	return 0;
 }
