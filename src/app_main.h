@@ -138,6 +138,10 @@ typedef struct {
 	u8 display_off;
 #endif
 	u8 measureInterval;
+#ifdef USE_EPD
+	u8 epdRefreshMode;	// EPD_REFRESH_OFF / _CLEAR / _RESET_CLEAR
+	u16 epdRefreshCnt;	// display updates between refreshes, 0 = off
+#endif
 }zcl_thermostatUICfgAttr_t;
 
 #ifdef ZCL_DIHUMIDIFICATION_CONTROL

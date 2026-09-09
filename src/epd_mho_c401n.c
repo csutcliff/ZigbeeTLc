@@ -12,7 +12,8 @@
 #define LOW     0
 #define HIGH    1
 
-#define 	DEF_EPD_REFRESH_CNT	1024
+/* DEF_EPD_REFRESH_CNT now lives in board_mho_c401n.h, so that the ZCL default
+ * in app_EpCfg.c and this driver cannot disagree. */
 
 RAM scr_data_t scr;
 
@@ -366,9 +367,7 @@ void init_lcd(void) {
 	scr.display_off = g_zcl_thermostatUICfgAttrs.display_off;
     scr.stage = 1; // Update/Init, stage 1
     scr.updated = 0;
-#ifdef 	DEF_EPD_REFRESH_CNT
-    scr.refresh_cnt = DEF_EPD_REFRESH_CNT; // 1024
-#endif
+    scr.refresh_cnt = g_zcl_thermostatUICfgAttrs.epdRefreshCnt;
     //memset(scr.display_buff, 0, sizeof(scr.display_buff));
     memset(scr.display_cmp_buff, 0, sizeof(scr.display_cmp_buff));
     gpio_write(EPD_RST, HIGH);
@@ -412,17 +411,28 @@ __attribute__((optimize("-Os"))) int task_lcd(void) {
 		default:
 			if((!scr.display_off) // g_zcl_thermostatUICfgAttrs.display_off
 			&& memcmp(scr.display_cmp_buff, scr.display_buff, sizeof(scr.display_buff))) {
-				memcpy(scr.display_cmp_buff, scr.display_buff, sizeof(scr.display_cmp_buff));
 				scr.stage = 1;
-#ifdef 	DEF_EPD_REFRESH_CNT
-				if (scr.refresh_cnt) {
-					scr.refresh_cnt--;
+				if (g_zcl_thermostatUICfgAttrs.epdRefreshMode != EPD_REFRESH_OFF
+				 && g_zcl_thermostatUICfgAttrs.epdRefreshCnt != 0
+				 && scr.refresh_cnt == 0) {
+					/* Anti-ghosting refresh. Blank the panel first and leave
+					 * display_buff alone, so the pass after this one sees the
+					 * buffers differ again and redraws the reading.
+					 *
+					 * The previous code copied the new frame in and then ran
+					 * the clearing waveform over it, which meant the panel
+					 * never reached a uniform state and the refresh could not
+					 * do the job it exists for. */
+					scr.refresh_cnt = g_zcl_thermostatUICfgAttrs.epdRefreshCnt;
+					if (g_zcl_thermostatUICfgAttrs.epdRefreshMode >= EPD_REFRESH_RESET_CLEAR)
+						epd_reset();
+					memset(scr.display_cmp_buff, 0, sizeof(scr.display_cmp_buff));
+					scr.updated = 0; // draw the blank with T_LUT_init
 				} else {
-				    epd_reset();
-				    scr.refresh_cnt = DEF_EPD_REFRESH_CNT; // 1024
-				    scr.updated = 0;
+					if (scr.refresh_cnt)
+						scr.refresh_cnt--;
+					memcpy(scr.display_cmp_buff, scr.display_buff, sizeof(scr.display_cmp_buff));
 				}
-#endif
 			} else
 				scr.stage = 0;
 		}

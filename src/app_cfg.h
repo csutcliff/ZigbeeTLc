@@ -255,7 +255,12 @@
  */
 // ID compatible NV: (0x3D000000 | (APP_RELEASE<<16) | (APP_BUILD<<8) | DEVICE)
 // Used NV_MODULE_APP Flash: 0x7a000 - 0x7c000
-#define USE_NV_APP	(0x3D012400 | BOARD)	// ID, not change!
+// Bump this whenever zcl_thermostatUICfgAttr_t (or any other saved struct)
+// changes layout: init_nv_app() compares it against the stored value and wipes
+// NV_MODULE_APP on a mismatch, so a stale item is never read into a struct of
+// a different size. Raised from 0x3D012400 when the e-paper refresh mode and
+// count attributes were added.
+#define USE_NV_APP	(0x3D012500 | BOARD)
 
 typedef enum{
 	NV_ITEM_APP_DEV_VER	= 0x60,
