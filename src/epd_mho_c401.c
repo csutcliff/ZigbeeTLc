@@ -374,8 +374,12 @@ void init_lcd(void) {
     scr.stage = 1;
     scr.updated = 0;
     scr.init = 3;
-	memset(scr.display_buff, 0, LCD_BUF_SIZE);
-	memset(scr.display_cmp_buff, 0xff, LCD_BUF_SIZE);
+	/* Do not clear the buffers here. task_lcd() copies the new frame into
+	 * display_cmp_buff immediately before calling init_lcd(), and the third
+	 * init pass (scr.init == 0) sends display_cmp_buff as the real image.
+	 * Filling it with 0xff made that pass paint every segment black, and
+	 * clearing display_buff then cost a further full-panel pass to blank the
+	 * screen before the next sensor reading could restore it. */
     gpio_write(EPD_RST, HIGH);
 }
 
