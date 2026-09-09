@@ -365,6 +365,28 @@ void show_small_number(int16_t number, bool percent){
 	}
 }
 
+/* Wait for the panel to actually pull EPD_BUSY low after a command that starts
+ * a panel operation, rather than assuming it manages that within a fixed 200 us.
+ *
+ * task_lcd() is a while() loop over EPD_BUSY, so if the controller is slower
+ * than the delay the loop runs the next stage regardless. Stage 1 issues
+ * POWER_ON and its own comment says the display needs about 30 ms to become
+ * ready, but the code waited 200 us before stage 2 pushed PANEL_SETTING,
+ * POWER_SETTING and the LUTs, potentially before the charge pump was up. The
+ * same applies to DISPLAY_REFRESH at the end of stage 2.
+ *
+ * Keep the original 200 us as a floor, then poll. Bounded so that a panel which
+ * never asserts BUSY cannot wedge the loop. */
+#define EPD_BUSY_ASSERT_TIMEOUT_US	5000
+_SCR_CODE_SEC_
+static void epd_wait_busy_asserted(void) {
+	u32 t = clock_time();
+	pm_wait_us(200);
+	while (gpio_read(EPD_BUSY)
+	   && (u32)(clock_time() - t) < EPD_BUSY_ASSERT_TIMEOUT_US * CLOCK_16M_SYS_TIMER_CLK_1US)
+		;
+}
+
 static void reset_lcd(void) {
 	// pulse RST_N low for 110 microseconds
     gpio_write(EPD_RST, LOW);
@@ -401,7 +423,7 @@ int task_lcd(void) {
 			transmit(0, POWER_ON);
 			// wait ~30 ms for the display to become ready to receive new
 			scr.stage = 2;
-			pm_wait_us(200);
+			epd_wait_busy_asserted();
 			break;
 		case 2: // Update/Init lcd, stage 2
 			if (scr.updated == 0) {
@@ -479,7 +501,7 @@ int task_lcd(void) {
 			// Refresh
 			transmit(0, DISPLAY_REFRESH);
 			// wait ~1256 ms for the display to become ready to receive new
-			pm_wait_us(200);
+			epd_wait_busy_asserted();
 			break;
 		case 3: // Update/Init lcd, stage 3
 			// send Charge Pump OFF command
