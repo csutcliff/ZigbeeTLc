@@ -385,7 +385,16 @@ void zb_bdbCommissioningCb(u8 status, void *arg){
 			rj_step = 0;
 			app_saveNwkChannel();
 
+			/* On an e-paper board "the light" is a display segment and the
+			 * blink interval is multiplied by four, so ten cycles meant about
+			 * 20 partial panel refreshes on every join and every rejoin after
+			 * a coordinator restart. One is enough to confirm the join. The
+			 * not-joined blink in app_task() is already guarded this way. */
+#ifdef USE_EPD
+			light_blink_start(1, 500, 500);
+#else
 			light_blink_start(10, 500, 500);
+#endif
 			//zb_setPollRate(POLL_RATE * 3);
 #if USE_UPDATE_POLLRATE
 			up_PollRate(32768); // 32 sec
