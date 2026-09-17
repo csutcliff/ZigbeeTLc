@@ -855,9 +855,18 @@ nv_sts_t zcl_thermostatConfig_save(int init)
 					g_zcl_thermostatUICfgAttrs.epdRefreshMode = EPD_REFRESH_MODE_MAX;
 				if(g_zcl_thermostatUICfgAttrs.epdRefreshCnt > EPD_REFRESH_CNT_MAX)
 					g_zcl_thermostatUICfgAttrs.epdRefreshCnt = EPD_REFRESH_CNT_MAX;
-				/* Restart the interval so a new count takes effect now rather
-				 * than after the old one has run down. */
-				scr.refresh_cnt = g_zcl_thermostatUICfgAttrs.epdRefreshCnt;
+				/* Shorten the pending countdown to the new count, never extend
+				 * it. Lowering the count therefore takes effect immediately,
+				 * and raising it, or changing the mode, leaves the countdown
+				 * alone so the next refresh comes no later than it would have.
+				 *
+				 * Reloading it unconditionally, which is what this did, meant
+				 * a write always bought a full count of grace. Switching the
+				 * mode from "off" back on could then never refresh promptly:
+				 * the countdown had long since reached 0, the write pushed it
+				 * back to the full count, and only epd_refresh_now got through. */
+				if(scr.refresh_cnt > g_zcl_thermostatUICfgAttrs.epdRefreshCnt)
+					scr.refresh_cnt = g_zcl_thermostatUICfgAttrs.epdRefreshCnt;
 			}
 #endif
 			memcpy(&zcl_nv_thermostatUiCfg, &g_zcl_thermostatUICfgAttrs,
