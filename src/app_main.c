@@ -261,22 +261,65 @@ static inline s32 div_round(s32 v, s32 d) {
 	return (v < 0) ? ((v - d / 2) / d) : ((v + d / 2) / d);
 }
 
-void show_th(void) {
-#ifdef ZCL_THERMOSTAT_UI_CFG
-    		if (g_zcl_thermostatUICfgAttrs.TemperatureDisplayMode) {
-    			// (°F) = (Temperature in degrees Celsius (°C) * 9/5) + 32.
-    			show_big_number_x10(div_round(sensor_ht.temp * 9, 50) + 320, TEMP_SYMBOL_F); // convert C to F
-    		} else {
-    			show_big_number_x10(div_round(sensor_ht.temp, 10), TEMP_SYMBOL_C);
-    		}
-#else // !ZCL_THERMOSTAT_UI_CFG
-    		show_big_number_x10(div_round(sensor_ht.temp, 10), TEMP_SYMBOL_C);
-#endif // ZCL_THERMOSTAT_UI_CFG
-
+/* One displayed humidity step, in sensor_ht.humi units (0.01 %) */
 #ifdef USE_DISPLAY_SMALL_NUMBER_X10
-    		show_small_number_x10((sensor_ht.humi + 5)/ 10, 1);
+#define DISPLAY_HUMI_STEP	10
 #else
-    		show_small_number((sensor_ht.humi + 50) / 100, 1);
+#define DISPLAY_HUMI_STEP	100
+#endif
+
+/* What the display shows now. Sensor noise around a rounding boundary flipped
+ * the last digit on most samples, and on the e-paper boards every change in
+ * the frame buffer costs a refresh (about 1.3 s busy on the MHO-C401). Only
+ * the display is held back; the reported attributes are untouched.
+ * shown_unit is 0 until a reading has been drawn and is cleared when EE is
+ * drawn, so the first reading after boot or after EE is drawn as it is. */
+static u8 shown_unit;	// 0 none, 1 C, 2 F
+static s16 shown_temp;	// x10, in the shown unit
+static s16 shown_humi;	// in DISPLAY_HUMI_STEP
+
+/* Keep 'shown' (in displayed steps) until 'reading' (in units of which one
+ * step is 'step') is at least 'margin' away from it, then take 'fresh'. */
+static s32 display_hold(s32 shown, s32 reading, s32 step, s32 margin, s32 fresh) {
+	s32 d = reading - shown * step;
+	if (d < 0)
+		d = -d;
+	return (d < margin) ? shown : fresh;
+}
+
+void show_th(void) {
+	u8 unit = 1;
+	s16 t, h;
+#if SHOW_SMILEY
+	s16 tc;
+#endif
+#ifdef ZCL_THERMOSTAT_UI_CFG
+	if (g_zcl_thermostatUICfgAttrs.TemperatureDisplayMode)
+		unit = 2;
+#endif
+	if (unit == 2) {
+		// (°F) = (Temperature in degrees Celsius (°C) * 9/5) + 32.
+		// temp * 9 + 16000 is the reading in 0.002 F, so one 0.1 F step is 50 of it.
+		t = div_round(sensor_ht.temp * 9, 50) + 320;
+		if (shown_unit == unit)
+			t = display_hold(shown_temp, sensor_ht.temp * 9 + 16000, 50, 40, t);
+	} else {
+		t = div_round(sensor_ht.temp, 10);
+		if (shown_unit == unit)
+			t = display_hold(shown_temp, sensor_ht.temp, 10, 8, t);
+	}
+	h = (sensor_ht.humi + DISPLAY_HUMI_STEP / 2) / DISPLAY_HUMI_STEP;
+	if (shown_unit)
+		h = display_hold(shown_humi, sensor_ht.humi, DISPLAY_HUMI_STEP, DISPLAY_HUMI_STEP * 3 / 5, h);
+	shown_unit = unit;
+	shown_temp = t;
+	shown_humi = h;
+
+	show_big_number_x10(t, (unit == 2) ? TEMP_SYMBOL_F : TEMP_SYMBOL_C);
+#ifdef USE_DISPLAY_SMALL_NUMBER_X10
+	show_small_number_x10(h, 1);
+#else
+	show_small_number(h, 1);
 #endif
 #ifdef USE_DISPLAY_BATTERY_LEVEL
     		show_battery_symbol(true, g_zcl_powerAttrs.batteryPercentage);
@@ -284,13 +327,15 @@ void show_th(void) {
     		show_battery_symbol(g_zcl_powerAttrs.batteryPercentage < DISPLAY_BATTERY_LOW_LEVEL);
 #endif
 #if SHOW_SMILEY
+    		// judged on the shown values, in 0.01 C and 0.01 %, so it cannot flip on noise either
+    		tc = (unit == 2) ? div_round((s32)(t - 320) * 50, 9) : t * 10;
 #ifdef ZCL_THERMOSTAT_UI_CFG
     		if(g_zcl_thermostatUICfgAttrs.showSmiley == 0)
-    			show_smiley(is_comfort(sensor_ht.temp, sensor_ht.humi) ? SMILE_HAPPY : SMILE_SAD);
+    			show_smiley(is_comfort(tc, h * DISPLAY_HUMI_STEP) ? SMILE_HAPPY : SMILE_SAD);
     		else
     			show_smiley(SMILE_NONE);
 #else
-    		show_smiley(is_comfort(sensor_ht.temp, sensor_ht.humi) ? SMILE_HAPPY : SMILE_SAD);
+    		show_smiley(is_comfort(tc, h * DISPLAY_HUMI_STEP) ? SMILE_HAPPY : SMILE_SAD);
 #endif // ZCL_THERMOSTAT_UI_CFG
 #endif // SHOW_SMILEY
 }
@@ -339,6 +384,7 @@ void read_sensor_and_show(void) {
     		sensor_ht.flag &= ~FLG_MEASURE_HT_LCD;
     		show_th();
     	} else {
+    		shown_unit = 0; // draw the next good reading as it is
     		show_err_sensors();
     	}
 #if USE_BLE
