@@ -331,7 +331,11 @@ void read_sensor_and_show(void) {
     	// no redraw over the reset screen while the button is held
     	&& !(g_sensorAppCtx.keyPressed && clock_time_exceed(g_sensorAppCtx.keyPressedTime, BUTTON_ZIGBEE_RESET_MS * 1000))) {
 #endif // ZCL_THERMOSTAT_UI_CFG
-    	if(sensor_ht.flag & FLG_MEASURE_HT_LCD) {
+    	/* flag is 0 only when there is no valid reading (sensor_th.h). The LCD
+    	 * bit is also clear while the next measurement is in flight, which is
+    	 * the case on the first periodic read after boot, and that drew EE
+    	 * over a good reading for a whole interval. */
+    	if(sensor_ht.flag) {
     		sensor_ht.flag &= ~FLG_MEASURE_HT_LCD;
     		show_th();
     	} else {
