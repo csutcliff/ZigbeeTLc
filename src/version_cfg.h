@@ -144,10 +144,10 @@
  * Base: upstream v0.1.4.0 beta 3 / v0.0.1.8 (master c249d8a). */
 #if USE_BLE
 #define APP_RELEASE				0x00	//BCD app release "0.0"
-#define APP_BUILD				0x20	//BCD app build "1.16"
+#define APP_BUILD				0x21	//BCD app build "1.17"
 #else
 #define APP_RELEASE				0x01	//BCD app release "0.1"
-#define APP_BUILD				0x48	//BCD app build "4.8"
+#define APP_BUILD				0x49	//BCD app build "4.9"
 #endif
 #define STACK_RELEASE			0x30	//BCD stack release 3.0
 #define STACK_BUILD				0x01	//BCD stack build 01
