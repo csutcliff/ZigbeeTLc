@@ -141,13 +141,13 @@
  * this as newer than the release it is based on. FILE_VERSION, which is what
  * OTA compares, is built from these. The fork is identified by swBuildId (see
  * ZCL_BASIC_SW_BUILD_ID in app_cfg.h), not by these numbers.
- * Base: upstream v0.1.4.0 / v0.0.1.8. */
+ * Base: upstream v0.1.4.0 beta 3 / v0.0.1.8 (master c249d8a). */
 #if USE_BLE
 #define APP_RELEASE				0x00	//BCD app release "0.0"
-#define APP_BUILD				0x1c	//BCD app build "1.12"
+#define APP_BUILD				0x1d	//BCD app build "1.13"
 #else
 #define APP_RELEASE				0x01	//BCD app release "0.1"
-#define APP_BUILD				0x44	//BCD app build "4.4"
+#define APP_BUILD				0x45	//BCD app build "4.5"
 #endif
 #define STACK_RELEASE			0x30	//BCD stack release 3.0
 #define STACK_BUILD				0x01	//BCD stack build 01
