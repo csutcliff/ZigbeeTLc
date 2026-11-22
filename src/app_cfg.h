@@ -342,6 +342,14 @@ typedef enum{
 #ifndef OTA_QUERY_INTERVAL
 #define OTA_QUERY_INTERVAL							(6*60*60) // sec (u16): zigbee2mqtt checks for an update at most once a day
 #endif
+/* Poll rate while an OTA image downloads. Each block response waits at the
+ * parent until the next poll, so this sets the per-block time; the SDK's
+ * QUEUE_POLL_RATE of 250 ms made a ~136 KB image take ~13 minutes. Only used
+ * for the length of the download. Z2M spaces block responses by
+ * ota.image_block_response_delay, so keep that at or below this. */
+#ifndef OTA_POLL_RATE
+#define OTA_POLL_RATE								100 // ms
+#endif
 #define TOUCHLINK_SUPPORT							0
 #define FIND_AND_BIND_SUPPORT						0
 #if TOUCHLINK_SUPPORT

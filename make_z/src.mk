@@ -14,6 +14,7 @@ $(OUT_PATH)$(SRC_DIR)/patch_z_sdk/hw_drv.o \
 $(OUT_PATH)$(SRC_DIR)/patch_z_sdk/drv_nv.o \
 $(OUT_PATH)$(SRC_DIR)/patch_z_sdk/ev_rtc.o \
 $(OUT_PATH)$(SRC_DIR)/patch_z_sdk/mac_phy.o \
+$(OUT_PATH)$(SRC_DIR)/patch_z_sdk/ota.o \
 $(OUT_PATH)$(SRC_DIR)/app_ui.o \
 $(OUT_PATH)$(SRC_DIR)/app_main.o \
 $(OUT_PATH)$(SRC_DIR)/app_utils.o \

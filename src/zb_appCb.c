@@ -294,7 +294,7 @@ void app_pollRateApply(void) {
 	u32 rate;
 #ifdef ZCL_OTA
 	if(zcl_attr_imageUpgradeStatus == IMAGE_UPGRADE_STATUS_DOWNLOAD_IN_PROGRESS)
-		rate = QUEUE_POLL_RATE;
+		rate = OTA_POLL_RATE;
 	else
 #endif
 #ifdef ZCL_POLL_CTRL
