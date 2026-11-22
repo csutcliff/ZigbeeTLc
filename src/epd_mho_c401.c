@@ -379,8 +379,12 @@ static void reset_lcd(void) {
 void init_lcd(void) {
 	reset_lcd();
 	scr.display_off = g_zcl_thermostatUICfgAttrs.display_off;
-	memset(scr.display_buff, 0, LCD_BUF_SIZE);
-	memset(scr.display_cmp_buff, 0xff, LCD_BUF_SIZE);
+	/* Do not clear the buffers here. The third init pass (scr.init == 0)
+	 * sends display_cmp_buff as the real image, and the init passes run
+	 * even with display_off set. Filling it with 0xff made that pass paint
+	 * every segment black, which left a turned-off display fully black, and
+	 * clearing display_buff then cost a further full-panel pass to blank the
+	 * screen before the next sensor reading could restore it. */
 #if PM_ENABLE
 	cpu_set_gpio_wakeup(EPD_BUSY, Level_High, 1);
 #endif
