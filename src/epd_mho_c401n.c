@@ -323,17 +323,26 @@ void show_small_number(s16 number, bool percent){
 	}
 }
 
+/* Pulse RST_N low for 110 us and let the controller settle before the next
+ * command is clocked out. task_lcd() goes straight on to re-test EPD_BUSY
+ * and clock out the waveform table after a reset, with no settling time
+ * once RST returned high. */
+_SCR_CODE_SEC_
+static void epd_reset(void) {
+	gpio_write(EPD_RST, LOW);
+	sleep_us(110);
+	gpio_write(EPD_RST, HIGH);
+	sleep_us(110);
+}
+
 static void reset_lcd(void) {
-	// pulse RST_N low for 110 microseconds
-    gpio_write(EPD_RST, LOW);
-    sleep_us(110);
+	epd_reset();
     scr.stage = 1; // Update/Init, stage 1
     scr.updated = 0;
 #ifdef 	DEF_EPD_REFRESH_CNT
     scr.refresh_cnt = DEF_EPD_REFRESH_CNT; // 1024
 #endif
 	//scr.display_buff[15] = 0;
-    gpio_write(EPD_RST, HIGH);
 }
 
 void init_lcd(void) {
