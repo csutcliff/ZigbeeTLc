@@ -125,7 +125,8 @@ const base = {
         description: 'Sensor measurement interval (default 20 seconds).',
         unit: 's',
         valueMin: 3,
-        valueMax: 255,
+        // READ_SENSOR_TIMER_MAX_SEC; the firmware replaces anything above it with 20 s
+        valueMax: 60,
     }),
 };
 
