@@ -618,10 +618,6 @@ void user_app_init(void)
 	//TODO: set bool AUTO_QUICK_DATA_POLL_ENABLE = FALSE ? -> zb_config.c
 #if QUICK_POLL_DISABLE
 	AUTO_QUICK_DATA_POLL_ENABLE = FALSE; // look zb_config.c
-#else
-	/* One quick poll after each transmission rather than the SDK's three:
-	 * a reply slower than that waits for the next long poll. */
-	AUTO_QUICK_DATA_POLL_TIMES = 1; // look zb_config.c
 #endif
 	/* Initialize ZB stack */
 	zb_init();
