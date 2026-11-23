@@ -38,6 +38,9 @@
 #define ZCL_THERMOSTAT_UI_CFG_ATTRID_EPD_UPDATES		0x0122
 /* Write non-zero to force a refresh now. Self-clearing, never persisted. */
 #define ZCL_THERMOSTAT_UI_CFG_ATTRID_EPD_REFRESH_NOW	0x0123
+/* Write non-zero to open an OTA window: query the OTA server now and every
+ * 15 min for 6 h. Self-clearing, never persisted. All boards. */
+#define ZCL_THERMOSTAT_UI_CFG_ATTRID_OTA_QUERY_NOW		0x0124
 /* The EPD_REFRESH_* mode values live in lcd.h, next to the display state, so
  * that the drivers can see them without pulling in the ZCL headers. */
 

@@ -339,9 +339,13 @@ typedef enum{
 #define ZCL_POLL_CTRL_SUPPORT						1
 #define ZCL_GROUP_SUPPORT							USE_TRIGGER
 #define ZCL_OTA_SUPPORT								1
+/* Periodic OTA query, sec (u16). 0: none; queries only run in an OTA window,
+ * opened on demand (see app_otaWindowStart()). */
 #ifndef OTA_QUERY_INTERVAL
-#define OTA_QUERY_INTERVAL							(6*60*60) // sec (u16): zigbee2mqtt checks for an update at most once a day
+#define OTA_QUERY_INTERVAL							0
 #endif
+#define OTA_WINDOW_SEC								(6*60*60) // an OTA window lasts this long after its last trigger
+#define OTA_WINDOW_PERIOD_SEC						(15*60) // query interval inside the window, matches the check-in interval
 /* Poll rate while an OTA image downloads. Each block response waits at the
  * parent until the next poll, so this sets the per-block time; the SDK's
  * QUEUE_POLL_RATE of 250 ms made a ~136 KB image take ~13 minutes. Only used

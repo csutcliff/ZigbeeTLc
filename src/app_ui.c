@@ -179,7 +179,7 @@ static s32 keyTimerCb(void *arg) {
 }
 /*******************************************************************
  * @brief	Button click detect:
- * 			short press button = send reports
+ * 			short press button = send reports, open an OTA window on release
  * 			keep press button 2s = Temperature DisplayMode С/F
  * 			keep press button 7s = Zigbee reset
  * 			keep press button 15s = Factory reset
@@ -270,6 +270,11 @@ void task_keys(void) {
 #if	USE_DISPLAY && defined(ZCL_THERMOSTAT_UI_CFG)
 				else if((g_sensorAppCtx.key_on_flag & 1) == 0)
 					zcl_thermostatConfig_save(0);
+#endif
+#ifdef ZCL_OTA
+				// short press: released before any long-press action fired
+				else if(zb_isDeviceJoinedNwk() && !g_sensorAppCtx.linkDown)
+					app_otaWindowStart();
 #endif
 			}
 		}

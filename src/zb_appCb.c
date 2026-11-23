@@ -32,7 +32,49 @@ static void sensorDevice_otaQueryStart(void) {
 		ota_serverAddrPerprogrammed(ss_ib.trust_center_address, 1);
 		g_otaCtx.otaServerEpInfo.profileId = HA_PROFILE_ID;
 	}
+#if OTA_QUERY_INTERVAL
 	ota_queryStart(OTA_QUERY_INTERVAL);
+#endif
+}
+
+/* OTA window: query the server now and then every OTA_WINDOW_PERIOD_SEC
+ * until a download completes or OTA_WINDOW_SEC has passed since the last
+ * trigger, instead of querying around the clock. Opened by a write to
+ * ota_query_now, a short button press, or at boot with a download pending. */
+extern ota_clientInfo_t otaClientInfo;
+s32 ota_periodicQueryServerCb(void *arg); // SDK ota.c, not in ota.h
+
+/* Queries left in the window. Non-zero exactly while the timer is pending, so
+ * no timer handle is kept: the dual-mode MHO-C401 build had 8 bytes of
+ * retention RAM to spare. Defining ota_query_now here rather than in
+ * app_EpCfg.c also measured 4 bytes less, from alignment padding. */
+static u8 otaWindowLeft;
+/* ZCL attribute ota_query_now (thermostat UI config cluster, app_EpCfg.c).
+ * Write-only trigger, cleared by sensorDevice_zclWriteReqCmd(); outside
+ * g_zcl_thermostatUICfgAttrs so it never causes a flash write. */
+u8 ota_query_now;
+
+static s32 otaWindowTimerCb(void *arg) {
+	// skipped while a download runs, but the window stays open: it may fail
+	if(zcl_attr_imageUpgradeStatus == IMAGE_UPGRADE_STATUS_NORMAL)
+		ota_periodicQueryServerCb(NULL);
+	if(--otaWindowLeft == 0)
+		return -1;
+	return OTA_WINDOW_PERIOD_SEC * 1000;
+}
+
+/* Open the window, or restart its 6 h if open. The first query goes out from
+ * the timer, never from the caller's context (a ZCL write handler). */
+void app_otaWindowStart(void) {
+	if(!otaWindowLeft && !TL_ZB_TIMER_SCHEDULE(otaWindowTimerCb, NULL, 500))
+		return; // no free timer
+	otaWindowLeft = OTA_WINDOW_SEC / OTA_WINDOW_PERIOD_SEC;
+}
+
+// The timer's next run ends the window.
+static void app_otaWindowStop(void) {
+	if(otaWindowLeft)
+		otaWindowLeft = 1;
 }
 #endif
 #if USE_BLE
@@ -221,6 +263,10 @@ void zb_bdbInitCb(u8 status, u8 joinedNetwork){
 
 #ifdef ZCL_OTA
 			sensorDevice_otaQueryStart();
+			/* A download interrupted by a reboot was reloaded from NV by
+			 * ota_clientInfoRecover(); open a window so it can resume. */
+			if(otaClientInfo.clientOtaFlg != OTA_FLAG_INIT_DONE)
+				app_otaWindowStart();
 #endif
 
 #ifdef ZCL_POLL_CTRL
@@ -546,9 +592,11 @@ void sensorDevice_otaProcessMsgHandler(u8 evt, u8 status)
 		if(status == ZCL_STA_SUCCESS){
 			ota_mcuReboot();
 		}else{
+			// a failed download leaves the window open; its next query can resume it
 			sensorDevice_otaQueryStart();
 		}
 	}else if(evt == OTA_EVT_IMAGE_DONE){
+		app_otaWindowStop(); // image received, only the upgrade end exchange is left
 		ota_in_progress = 0;
 		set_PollRate(); // zb_setPollRate(DEFAULT_POLL_RATE);
 	}

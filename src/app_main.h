@@ -346,6 +346,10 @@ void app_fastPollWindow(u32 ms);
 #ifdef ZCL_POLL_CTRL
 void sensorDevice_zclCheckInCmdSend(void);
 #endif
+#ifdef ZCL_OTA
+extern u8 ota_query_now;
+void app_otaWindowStart(void);
+#endif
 
 #if USE_UPDATE_POLLRATE
 void up_PollRate(u32 period_ms);

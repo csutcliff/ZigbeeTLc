@@ -213,6 +213,12 @@ void sensorDevice_zclWriteReqCmd(u16 clusterId, zclWriteCmd_t *pWriteReqCmd)
 #endif
 #ifdef ZCL_THERMOSTAT_UI_CFG
 	if(clusterId == ZCL_CLUSTER_HAVC_USER_INTERFACE_CONFIG) {
+#ifdef ZCL_OTA
+		if(ota_query_now) {
+			ota_query_now = 0;
+			app_otaWindowStart(); // first query goes out from a timer, not from here
+		}
+#endif
 		zcl_thermostatConfig_save(0);
 	} else
 #endif // ZCL_THERMOSTAT_UI_CFG
