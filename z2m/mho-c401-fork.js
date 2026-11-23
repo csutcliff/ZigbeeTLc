@@ -177,6 +177,20 @@ const fork = {
         description: 'Run an anti-ghosting refresh now, whatever the mode and count are set to.',
         access: 'SET',
     }),
+    // Write-only trigger, firmware attribute ota_query_now. The firmware has no
+    // periodic OTA query; this opens a window in which it queries, so a
+    // scheduled update starts. A short press of the device button does the same.
+    otaCheckNow: m.enumLookup({
+        name: 'ota_check_now',
+        lookup: {check: 1},
+        cluster: 'hvacUserInterfaceCfg',
+        attribute: {ID: 0x0124, type: Zcl.DataType.UINT8},
+        description:
+            'Ask the device to look for a firmware update: delivered at its next check-in ' +
+            '(within 15 min), it then queries now and every 15 min for up to 6 h, or until an ' +
+            'update completes. Schedule the update in Zigbee2MQTT, before or after.',
+        access: 'SET',
+    }),
 };
 
 const definition = {
@@ -212,6 +226,7 @@ const definition = {
         fork.epdRefreshCount,
         fork.epdUpdatesSinceRefresh,
         fork.epdRefreshNow,
+        fork.otaCheckNow,
         m.battery({voltage: true}),
         // Check in every 15 min rather than the firmware's former 1 h default.
         // Z2M queues writes to these sleepy devices and delivers them when the
