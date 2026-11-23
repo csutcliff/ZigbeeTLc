@@ -601,7 +601,7 @@ const zclAttrInfo_t occupancy_attrTbl[] = {
 /* Poll Control */
 zcl_pollCtrlAttr_t g_zcl_pollCtrlAttrs =
 {
-		.chkInInterval			= 3600*4, // 3600 sec, 1 hr
+		.chkInInterval			= 900*4, // 15 min: bounds how long a queued write from the coordinator waits
 		.longPollInterval		= READ_SENSOR_TIMER_SEC*4,  // 3..240 sec
 		.shortPollInterval		= 2, 	// 2 qs
 		.fastPollTimeout		= 10*4,  // 10 sec
