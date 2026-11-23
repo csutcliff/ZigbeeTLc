@@ -213,6 +213,20 @@ const definition = {
         fork.epdUpdatesSinceRefresh,
         fork.epdRefreshNow,
         m.battery({voltage: true}),
+        // Check in every 15 min rather than the firmware's former 1 h default.
+        // Z2M queues writes to these sleepy devices and delivers them when the
+        // device checks in (it answers the check-in with fast poll), so the
+        // check-in interval is the longest a settings change waits. The
+        // firmware does not keep a written value across a reboot; configure
+        // runs again after every OTA.
+        {
+            isModernExtend: true,
+            configure: [
+                async (device) => {
+                    await device.getEndpoint(1).write('genPollCtrl', {checkinInterval: 15 * 60 * 4});
+                },
+            ],
+        },
     ],
     ota: true,
 };
