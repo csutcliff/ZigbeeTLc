@@ -188,11 +188,41 @@ static u32 app_rejoinChannelMask(void) {
 	return zb_apsChannelMaskGet();
 }
 
+/* Back to the state for the next time the link drops: first attempt secure,
+ * shortest period. Without this the secure/insecure toggle stays wherever the
+ * last offline spell left it, and the stack uses that mode for the rejoins it
+ * starts by itself. */
+static void app_rejoinStateReset(void) {
+	rj_step = 0;
+#if !USE_BLE
+	rj_secMode = REJOIN_SECURITY;
+	zb_rejoinSecModeSet(REJOIN_SECURITY);
+#endif
+}
+
+/* Called on every path that reports the device as connected again. */
+static void app_rejoinDone(void) {
+	if(g_sensorAppCtx.timerRejoinBackoffEvt)
+		TL_ZB_TIMER_CANCEL(&g_sensorAppCtx.timerRejoinBackoffEvt);
+	app_rejoinStateReset();
+}
+
 static s32 sensorDevice_rejoinBackoff(void *arg){
 
     if (zb_isDeviceFactoryNew()) {
     	g_sensorAppCtx.timerRejoinBackoffEvt = NULL;
         return -1;
+    }
+
+    /* Connected: nothing to rejoin. Two MHO-C401N in the field kept this timer
+     * running while connected and rejoined every 3 minutes for days, an insecure
+     * attempt that failed then a secure one that succeeded, through any parent,
+     * and one froze with the network symbol lit. Stop here rather than rely on
+     * every connect path having cancelled the timer. */
+    if (zb_isDeviceJoinedNwk() && !g_sensorAppCtx.linkDown) {
+    	g_sensorAppCtx.timerRejoinBackoffEvt = NULL;
+    	app_rejoinStateReset();
+    	return -1;
     }
 
 #if !USE_BLE
@@ -258,6 +288,7 @@ void zb_bdbInitCb(u8 status, u8 joinedNetwork){
 
 			g_sensorAppCtx.linkDown = 0;
 			app_saveNwkChannel();
+			app_rejoinDone();
 
 			set_PollRate(); // zb_setPollRate(DEFAULT_POLL_RATE);
 
@@ -423,13 +454,10 @@ void zb_bdbCommissioningCb(u8 status, void *arg){
 				TL_ZB_TIMER_CANCEL(&g_sensorAppCtx.timerSteerEvt);
 			}
 
-			if(g_sensorAppCtx.timerRejoinBackoffEvt) {
-				TL_ZB_TIMER_CANCEL(&g_sensorAppCtx.timerRejoinBackoffEvt);
-			}
+			app_rejoinDone();
 
 			g_sensorAppCtx.rejoin_cnt = REJOIN_FAILURE_COUNT;
 			g_sensorAppCtx.linkDown = 0;
-			rj_step = 0;
 			app_saveNwkChannel();
 
 			/* On an e-paper board "the light" is a display segment and the
